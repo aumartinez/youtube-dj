@@ -1,0 +1,25 @@
+{
+  "name": "youtube-dj-mixer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Two-deck YouTube DJ mixer built with Vue 3, Vite and SortableJS. No backend, no API keys.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "sortablejs": "^1.15.7",
+    "vue": "^3.5.45"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/test-utils": "^2.5.1",
+    "jsdom": "^29.1.1",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}
