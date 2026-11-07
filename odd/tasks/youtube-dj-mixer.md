@@ -33,6 +33,9 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
   ("before end") or an absolute timestamp ("at time") — runs the existing crossfade engine, which
   starts the other deck. Fires at most once per track, warns once when no next track exists,
   persists its settings, and never starts audio on reload.
+- **S14** Deploy the production build to GitHub Pages with GitHub Actions (`build_type=workflow`,
+  no `gh-pages` branch). The Vite `base` is derived from `GITHUB_REPOSITORY` so the project page
+  resolves `/youtube-dj/assets/*`; `VITE_BASE` overrides it. `dist/` and `node_modules/` stay out of git.
 
 ## Tasks
 
@@ -46,6 +49,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T6  | S10,S11   | inline | done   | `App.smoke.test.js`: 10 jsdom tests with a stubbed YT player |
 | T7  | all       | inline | done   | `npm run build` 23 modules, preview served, headless Edge shows 2 live YT iframes |
 | T8  | S13       | inline | done   | `lib/autofade.js` (+tests), store trigger, mixer-panel UI, 85 tests total |
+| T9  | S14       | inline | done   | Actions run green; live at https://aumartinez.github.io/youtube-dj/ (200, assets 200, 2 iframes) |
 
 ## Log
 
@@ -105,3 +109,20 @@ on Stop/eject so a replayed track can cue again. Settings persist inside `settin
 - 85 tests pass (6 files), including a jsdom test that advances the fake player clock to the cue and
   asserts Deck B starts and the fade is active.
 - `npm run build` re-run clean; headless Edge confirms the new "Timed auto fade" control renders.
+
+**L6 (user request, verbatim, 2026-11-07)**
+
+"how do I push this to a github page?"
+
+Decisions: Pages via GitHub Actions with `build_type=workflow` (no `gh-pages` branch, no committed
+`dist/`). `vite.config.js` derives `base` from `GITHUB_REPOSITORY` (`/youtube-dj/`) with `VITE_BASE`
+as the escape hatch, so local dev stays at `/`. The workflow runs `npm ci`, `npm test`, `npm run build`,
+then `configure-pages` + `upload-pages-artifact` + `deploy-pages`; `concurrency: pages` cancels stale
+runs. The Pages site was created through the API with `build_type=workflow`.
+
+Evidence: run `42419606618` green end to end; `https://aumartinez.github.io/youtube-dj/` returns 200
+with the app title, `/youtube-dj/assets/index-DFS3iN4r.js` returns 200, and headless Edge renders the
+mounted app with 2 YouTube iframes and "YouTube API ready".
+
+Housekeeping: an unrelated harness-generated `.atl/` skill-registry folder was accidentally staged in
+the CI commit; removed from the index in a follow-up commit and added to `.gitignore`.
