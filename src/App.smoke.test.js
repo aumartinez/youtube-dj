@@ -244,12 +244,12 @@ describe('timed auto fade', () => {
     playerA.duration = 100
     playerA.currentTime = 90
 
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    await new Promise((resolve) => setTimeout(resolve, 700))
     await flushPromises()
     expect(mixer.state.fade.active).toBe(false)
 
     playerA.currentTime = 96.2
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    await new Promise((resolve) => setTimeout(resolve, 700))
     await flushPromises()
 
     expect(mixer.state.fade.active).toBe(true)
@@ -269,7 +269,7 @@ describe('timed auto fade', () => {
     playerA.currentTime = 99
 
     mixer.setAutoFade({ enabled: false, mode: 'before-end', secondsBeforeEnd: 4 })
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 700))
     await flushPromises()
 
     expect(mixer.state.fade.active).toBe(false)

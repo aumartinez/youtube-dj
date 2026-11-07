@@ -4,6 +4,8 @@ Two-deck YouTube mixer built with **Vue 3 + Vite + JavaScript + SortableJS**.
 No backend, no API keys, no build secrets: everything runs in the browser and the
 queue lives in `localStorage`.
 
+**Live:** https://aumartinez.github.io/youtube-dj/
+
 ## What it does
 
 - **Two real YouTube players** (Deck A / Deck B) created with the official
@@ -107,6 +109,18 @@ src/
 The YouTube `YT.Player` instances live outside Vue's reactive state on purpose,
 and each player is mounted into an untracked child node because the IFrame API
 replaces its target element with an `<iframe>`.
+
+## Deployment (GitHub Pages)
+
+`.github/workflows/deploy.yml` tests, builds and publishes on every push to `main`.
+No `gh-pages` branch and no committed `dist/`.
+
+- `vite.config.js` derives `base` from `GITHUB_REPOSITORY`, so the project page gets
+  `/youtube-dj/` asset URLs while local dev and preview stay at `/`.
+- Moving to a custom domain or a user page? Set `VITE_BASE` (for example `VITE_BASE=/`).
+- The repository's Pages site is enabled with `build_type=workflow`, so the Actions
+  job publishes directly. For your own fork: push to `main`, then **Settings → Pages**
+  → source **GitHub Actions**, and re-run the workflow.
 
 ## Notes and limits
 
