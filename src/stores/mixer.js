@@ -31,6 +31,7 @@ import {
   findNextQueued,
   markPlayed,
   releaseItem,
+  requeuePlayed as requeuePlayedItems,
   reorderItems,
 } from '../lib/playlist'
 import {
@@ -93,6 +94,7 @@ const state = reactive({
   settings: {
     fadeDuration: DEFAULT_FADE_DURATION,
     autoFade: { ...DEFAULT_AUTO_FADE },
+    repeatList: false,
   },
   crossfader: 0,
   activeDeck: 'A',
@@ -397,7 +399,7 @@ function handleTrackEnded(deckId) {
   const finished = deckItem(state.items, deckId)
   if (finished) markPlayed(state.items, finished.id)
 
-  const next = findNextQueued(state.items)
+  const next = nextQueuedOrRequeued()
   if (next) {
     assignItemToDeck(state.items, next.id, deckId)
     cueDeckItem(deckId, next)
@@ -421,6 +423,35 @@ function handleTrackEnded(deckId) {
 
 // --- Deck commands ---------------------------------------------------------
 
+/**
+ * Next track to play: the first queued item, or — when repeat is on — the whole
+ * played history requeued in list order so the list starts over.
+ */
+function nextQueuedOrRequeued() {
+  const next = findNextQueued(state.items)
+  if (next) return next
+  if (!state.settings.repeatList) return null
+
+  const count = requeuePlayedItems(state.items)
+  if (!count) return null
+
+  notify(`Repeat list: ${count} played track${count === 1 ? '' : 's'} requeued.`, 'info')
+  return findNextQueued(state.items)
+}
+
+function setRepeatList(enabled) {
+  state.settings.repeatList = enabled === true
+}
+
+/** Manual "start over": puts every consumed track back in the queue. */
+function requeuePlayed() {
+  const count = requeuePlayedItems(state.items)
+  if (count) {
+    notify(`Requeued ${count} played track${count === 1 ? '' : 's'}.`, 'success')
+  }
+  return count
+}
+
 function playerReady(deckId) {
   if (state.apiStatus === 'error') {
     notify('The YouTube API is offline. Use Retry in the banner.', 'error')
@@ -443,7 +474,7 @@ function ensureDeckItem(deckId) {
     cuedVideoId[deckId] = null
   }
 
-  const next = findNextQueued(state.items)
+  const next = nextQueuedOrRequeued()
   if (!next) {
     notify('Queue is empty — paste a YouTube link to add a track.', 'warn')
     return null
@@ -553,7 +584,7 @@ function cueNextTrack(deckId) {
     return false
   }
 
-  const next = findNextQueued(state.items)
+  const next = nextQueuedOrRequeued()
   if (!next) {
     notify('Queue is empty — paste a YouTube link to add a track.', 'warn')
     return false
@@ -829,7 +860,7 @@ function checkAutoFadeTrigger() {
   if (!reached) return
 
   const targetId = otherDeck(deckId)
-  const nextItem = deckItem(state.items, targetId) ?? findNextQueued(state.items)
+  const nextItem = deckItem(state.items, targetId) ?? nextQueuedOrRequeued()
   if (!nextItem) {
     if (state.autoFadeRuntime.warnedFor !== item.id) {
       state.autoFadeRuntime.warnedFor = item.id
@@ -1172,6 +1203,7 @@ watch(
     state.items,
     state.settings.fadeDuration,
     state.settings.autoFade,
+    state.settings.repeatList,
     state.crossfader,
   ],
   () => schedulePersist(),
@@ -1235,6 +1267,7 @@ async function init() {
     state.items.push(...restored.items)
     state.settings.fadeDuration = restored.settings.fadeDuration
     state.settings.autoFade = restored.settings.autoFade
+    state.settings.repeatList = restored.settings.repeatList === true
     state.crossfader = restored.crossfader
     state.activeDeck = crossfaderToSide(restored.crossfader)
     state.restored = restored.items.length > 0
@@ -1325,6 +1358,7 @@ export function resetMixerForTests() {
   state.decks.B = createDeckState('B')
   state.settings.fadeDuration = DEFAULT_FADE_DURATION
   state.settings.autoFade = { ...DEFAULT_AUTO_FADE }
+  state.settings.repeatList = false
   state.autoFadeRuntime = { firedFor: null, warnedFor: null }
   state.importing = { active: false, phase: '', found: 0, added: 0, skipped: 0 }
   state.crossfader = 0
@@ -1354,6 +1388,8 @@ export const mixer = {
   moveCrossfader,
   setFadeDuration,
   setAutoFade,
+  setRepeatList,
+  requeuePlayed,
   addTrack,
   importPlaylist,
   submitUrl,

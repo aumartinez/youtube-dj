@@ -14,6 +14,7 @@ let sortable = null
 const counts = computed(() => mixer.trackCounts.value)
 const hasPlayed = computed(() => counts.value.played > 0)
 const isImporting = computed(() => mixer.state.importing.active)
+const repeatList = computed(() => mixer.state.settings.repeatList)
 
 async function submit() {
   formError.value = ''
@@ -71,10 +72,38 @@ onBeforeUnmount(() => {
           {{ counts.played }} played
         </p>
       </div>
-      <button v-if="hasPlayed" type="button" class="btn btn--small btn--ghost" @click="mixer.clearPlayed()">
-        <i class="fa-solid fa-broom" aria-hidden="true"></i>
-        Clear played
-      </button>
+      <div class="playlist__controls">
+        <button
+          type="button"
+          class="switch switch--labeled"
+          :class="{ 'switch--on': repeatList }"
+          role="switch"
+          :aria-checked="repeatList"
+          title="When the queue runs out, requeue every played track and start again"
+          @click="mixer.setRepeatList(!repeatList)"
+        >
+          <span class="switch__dot" aria-hidden="true"></span>
+          Repeat list
+        </button>
+        <button
+          v-if="hasPlayed"
+          type="button"
+          class="btn btn--small btn--ghost"
+          @click="mixer.requeuePlayed()"
+        >
+          <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+          Requeue played
+        </button>
+        <button
+          v-if="hasPlayed"
+          type="button"
+          class="btn btn--small btn--ghost"
+          @click="mixer.clearPlayed()"
+        >
+          <i class="fa-solid fa-broom" aria-hidden="true"></i>
+          Clear played
+        </button>
+      </div>
     </header>
 
     <form class="playlist__form" @submit.prevent="submit">
@@ -118,7 +147,8 @@ onBeforeUnmount(() => {
     <p class="playlist__hint">
       Load: press <b>Cue next track</b> on an empty deck, or use the <b>A</b> / <b>B</b> buttons
       to send a row to that deck. Paste a video URL for one track or a public playlist URL to
-      import all of them. Drag the handle to reorder.
+      import all of them. Drag the handle to reorder. <b>Repeat list</b> starts over when the
+      queue runs out; <b>Requeue played</b> puts finished tracks back without waiting.
     </p>
   </section>
 </template>

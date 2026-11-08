@@ -94,6 +94,20 @@ export function markPlayed(items, itemId) {
   return item
 }
 
+/** Puts every consumed track back in the queue, preserving list order. */
+export function requeuePlayed(items) {
+  let count = 0
+  for (const item of items) {
+    if (item.state === ITEM_STATES.PLAYED) {
+      item.state = ITEM_STATES.QUEUED
+      item.deck = null
+      item.error = null
+      count += 1
+    }
+  }
+  return count
+}
+
 /** In-place reorder used by drag-and-drop. States and deck ids are untouched. */
 export function reorderItems(items, fromIndex, toIndex) {
   if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return items

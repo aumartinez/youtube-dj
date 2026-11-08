@@ -924,6 +924,18 @@ img {
   gap: 10px;
 }
 
+.playlist__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch--labeled {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
 .playlist__head h2 {
   font-size: 0.8rem;
   letter-spacing: 0.2em;

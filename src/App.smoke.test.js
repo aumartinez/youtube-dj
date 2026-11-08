@@ -527,6 +527,75 @@ describe('timed auto fade', () => {
   })
 })
 
+describe('repeat list', () => {
+  async function endDeck(playerIndex = 0) {
+    FakePlayer.instances[playerIndex].end()
+    await flushPromises()
+  }
+
+  it('toggles repeat from the playlist header', async () => {
+    const wrapper = await mountApp()
+    const toggle = wrapper.findAll('button').find((button) => button.text().includes('Repeat list'))
+    expect(toggle).toBeTruthy()
+
+    await toggle.trigger('click')
+    expect(mixer.state.settings.repeatList).toBe(true)
+
+    await toggle.trigger('click')
+    expect(mixer.state.settings.repeatList).toBe(false)
+  })
+
+  it('requeues played tracks at the end and cues the first one again', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+    mixer.setRepeatList(true)
+
+    await click(deck(wrapper, 'A'), 'Play')
+    await endDeck()
+    await click(deck(wrapper, 'A'), 'Play')
+    await endDeck()
+
+    expect(mixer.state.items[0].state).toBe('loaded')
+    expect(mixer.state.items[0].deck).toBe('A')
+    expect(mixer.state.items[1].state).toBe('queued')
+  })
+
+  it('leaves the list exhausted when repeat is off', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+
+    await click(deck(wrapper, 'A'), 'Play')
+    await endDeck()
+    await click(deck(wrapper, 'A'), 'Play')
+    await endDeck()
+
+    expect(mixer.state.items.every((item) => item.state === 'played')).toBe(true)
+    expect(mixer.deckItem('A')).toBeNull()
+  })
+
+  it('requeues every played track from the header button', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+
+    await click(deck(wrapper, 'A'), 'Play')
+    await endDeck()
+    await click(deck(wrapper, 'A'), 'Play')
+    await endDeck()
+    expect(wrapper.findAll('.track--played')).toHaveLength(2)
+
+    const requeue = wrapper.findAll('button').find((button) => button.text().includes('Requeue played'))
+    expect(requeue).toBeTruthy()
+    await requeue.trigger('click')
+    await flushPromises()
+
+    expect(mixer.state.items.every((item) => item.state === 'queued')).toBe(true)
+    expect(wrapper.findAll('.track--played')).toHaveLength(0)
+  })
+})
+
 describe('natural end', () => {
   it('cues the next queued item into the ended deck without playing it', async () => {
     const wrapper = await mountApp()

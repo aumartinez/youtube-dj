@@ -19,6 +19,10 @@ queue lives in `localStorage`.
   enumerates it with a throwaway off-screen IFrame player (`cuePlaylist` →
   `getPlaylist`), appends every new track to the queue (deduped), and fetches
   titles. Public/unlisted only, still no API key, and nothing autoplays.
+- **Repeat list**: a toggle in the playlist header. When the queue runs out it
+  requeues every `played` track in list order and cues the first one again —
+  it does not autoplay, matching the natural-end rule. **Requeue played** does
+  the same on demand. Played rows are dimmed until they are requeued.
 - **Smart auto crossfade**: direction follows the live deck (A → B or B → A),
   selectable 4 / 8 / 12 / 16 s, starts the destination deck first, then
   animates the crossfader with `requestAnimationFrame`, which interpolates both
@@ -97,8 +101,11 @@ npm test
 7. Let a track end naturally: the next queued item is cued into that deck in a
    paused state; the other deck is untouched.
 8. Drag playlist rows by the handle: assigned tracks keep their deck.
-9. Reload: the queue and settings return, everything is silent until you press
-   Play (browser autoplay policy).
+9. Turn on **Repeat list** when you reach the end: every played track is
+   requeued in order and the first is cued again. **Requeue played** does it
+   immediately.
+10. Reload: the queue and settings return, everything is silent until you press
+    Play (browser autoplay policy).
 
 ## Architecture
 

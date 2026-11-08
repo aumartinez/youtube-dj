@@ -47,6 +47,10 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 - **S18** First-run affordance: with an empty queue an empty deck shows "No tracks yet" and a
   button that scrolls to and focuses the add field; once the queue has tracks the same button
   becomes "Cue next track" and loads the first queued item without playing it.
+- **S22** Repeat list: an opt-in toggle. When no `queued` item remains and the toggle is on, every
+  `played` item is requeued in list order and the first one is cued (never autoplayed, preserving
+  S7). A manual **Requeue played** action does the same on demand. Both feed every "next track"
+  path (natural end, deck Play, Cue next, auto crossfade, timed auto fade). The flag persists.
 - **S21** Crossfades must survive a hidden tab. Browsers stop `requestAnimationFrame` for hidden
   pages, so `runFade` also accepts a time-based watchdog: if no frame arrives within the window,
   progress is computed from elapsed time and the fade still lands on schedule. Background timer
@@ -83,6 +87,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T13 | S19       | inline | done   | `isMixUrl` detection + explicit warning/rejection; 101 tests |
 | T14 | S20       | inline | done   | fade-landing + dead-air + zero-volume guards; 104 tests |
 | T15 | S21       | inline | done   | rAF-independent fade watchdog; 107 tests |
+| T16 | S22       | inline | done   | repeat toggle + requeue button, `nextQueuedOrRequeued`; 112 tests |
 
 ## Log
 
@@ -282,3 +287,18 @@ Evidence: RED via a store test where rAF never calls back (test timed out under 
 timeout until a per-test 15s timeout was set), then 107/107 green. Two new unit tests cover the
 watchdog finishing a fade and skipping when frames flow. Background timer throttling still applies
 to the cue check (~1s hidden, longer after several minutes), which is documented rather than hidden.
+
+**L13 (user request, verbatim, 2026-11-08)**
+
+"Quick request, do you think it is possible to have a "repeat list" control? Lets say a list with 10+
+items and would like when it goes to the end to start repeating over? or if my playlist was already
+played to have "requeu" that enables them all again? currently after playing they all go fade out"
+
+Decisions: one toggle ("Repeat list") plus one manual action ("Requeue played"). `played` items are
+returned to `queued` in list order (no duplication, no new state), and every "next track" path uses
+`nextQueuedOrRequeued()` so natural end, Play, Cue next, auto crossfade and timed auto fade all honor
+it. Repeat never autoplays: it requeues and cues, preserving S7. The flag persists in
+`settings.repeatList` (default false) and is sanitized on restore.
+
+Evidence: RED first (4 failures: storage flag + 3 store/UI tests), then 112/112 green. New tests:
+toggle from the header, requeue-and-cue at the end, exhausted when off, manual requeue button.

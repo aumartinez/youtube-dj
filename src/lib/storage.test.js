@@ -155,6 +155,15 @@ describe('parseStoredState', () => {
     })
   })
 
+  it('persists and defaults the repeat-list flag', () => {
+    const saved = serializeState({ items: [], settings: { repeatList: true }, crossfader: 0 })
+    expect(saved.settings.repeatList).toBe(true)
+    expect(parseStoredState(JSON.stringify(saved)).settings.repeatList).toBe(true)
+    expect(parseStoredState(JSON.stringify({ items: [], settings: {} })).settings.repeatList).toBe(
+      false,
+    )
+  })
+
   it('exposes a versioned storage key', () => {
     expect(STORAGE_KEY).toBe('youtube-dj-mixer:v1')
   })

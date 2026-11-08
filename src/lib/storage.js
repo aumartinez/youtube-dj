@@ -42,6 +42,7 @@ export function serializeState({ items = [], settings = {}, crossfader = 0 } = {
     settings: {
       fadeDuration: normalizeFadeDuration(settings?.fadeDuration),
       autoFade: normalizeAutoFadeSettings(settings?.autoFade),
+      repeatList: settings?.repeatList === true,
     },
     crossfader: clamp01(crossfader),
   }
@@ -116,6 +117,7 @@ export function parseStoredState(raw) {
     settings: {
       fadeDuration: normalizeFadeDuration(data.settings?.fadeDuration),
       autoFade: normalizeAutoFadeSettings(data.settings?.autoFade),
+      repeatList: data.settings?.repeatList === true,
     },
     crossfader: clamp01(data.crossfader),
   }
