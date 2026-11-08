@@ -58,7 +58,7 @@ onBeforeUnmount(() => {
         </template>
         <template v-else>
           <span class="deck__overlay-mark">{{ deckId }}</span>
-          <p>Empty deck — hit Play to take the next queued track.</p>
+          <p>Empty deck — press Play for the next queued track, or use A / B on a playlist row.</p>
         </template>
       </div>
     </div>

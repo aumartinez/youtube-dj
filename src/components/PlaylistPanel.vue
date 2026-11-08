@@ -12,14 +12,15 @@ let sortable = null
 
 const counts = computed(() => mixer.trackCounts.value)
 const hasPlayed = computed(() => counts.value.played > 0)
+const isImporting = computed(() => mixer.state.importing.active)
 
-function submit() {
-  const result = mixer.addTrack(url.value)
+async function submit() {
+  formError.value = ''
+  const result = await mixer.submitUrl(url.value)
   if (!result.ok) {
     formError.value = result.error
     return
   }
-  formError.value = ''
   url.value = ''
 }
 
@@ -79,17 +80,22 @@ onBeforeUnmount(() => {
         class="playlist__input"
         type="text"
         inputmode="url"
-        placeholder="https://www.youtube.com/watch?v=…"
-        aria-label="YouTube URL"
+        placeholder="Video or playlist URL — watch?v=… / playlist?list=…"
+        aria-label="YouTube video or playlist URL"
         autocomplete="off"
         spellcheck="false"
       />
-      <button type="submit" class="btn btn--accent">
-        <i class="fa-solid fa-plus" aria-hidden="true"></i>
-        Add track
+      <button type="submit" class="btn btn--accent" :disabled="isImporting">
+        <i class="fa-solid" :class="isImporting ? 'fa-spinner fa-spin' : 'fa-plus'" aria-hidden="true"></i>
+        {{ isImporting ? 'Importing…' : 'Add' }}
       </button>
     </form>
     <p v-if="formError" class="playlist__error" role="alert">{{ formError }}</p>
+
+    <p v-if="isImporting" class="playlist__import" role="status">
+      <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+      {{ mixer.state.importing.phase }}
+    </p>
 
     <p v-if="!mixer.state.items.length" class="playlist__empty">
       The queue is empty. Paste a YouTube link above, then press Play on a deck — Deck A takes the
@@ -106,6 +112,7 @@ onBeforeUnmount(() => {
     </ul>
 
     <p class="playlist__hint">
+      Paste a video URL to add one track, or a public playlist URL to import every track in it.
       Drag the handle to reorder. Use the <b>A</b> / <b>B</b> buttons to load or replace that
       deck's track — a playing track keeps playing, a cued one stays cued.
     </p>

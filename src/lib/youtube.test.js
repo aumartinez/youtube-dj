@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { extractVideoId, formatClock, isVideoId, thumbnailUrl } from './youtube'
+import {
+  extractPlaylistId,
+  extractVideoId,
+  formatClock,
+  isPlaylistUrl,
+  isVideoId,
+  thumbnailUrl,
+} from './youtube'
 
 describe('extractVideoId', () => {
   it('accepts a bare 11-character video id', () => {
@@ -36,6 +43,38 @@ describe('extractVideoId', () => {
     expect(extractVideoId(null)).toBeNull()
     expect(extractVideoId(42)).toBeNull()
     expect(extractVideoId(undefined)).toBeNull()
+  })
+})
+
+describe('playlists', () => {
+  it('extracts a playlist id from public playlist urls', () => {
+    expect(
+      extractPlaylistId('https://www.youtube.com/playlist?list=PLOU2XLYxmsIIAOskSyap13n9W-xOt_GP5'),
+    ).toBe('PLOU2XLYxmsIIAOskSyap13n9W-xOt_GP5')
+    expect(extractPlaylistId('music.youtube.com/playlist?list=OLAK5uy_kTest12345')).toBe(
+      'OLAK5uy_kTest12345',
+    )
+  })
+
+  it('reads the list id from a watch url without treating it as a playlist import', () => {
+    const watch = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890'
+    expect(extractPlaylistId(watch)).toBe('PL1234567890')
+    expect(isPlaylistUrl(watch)).toBe(false)
+  })
+
+  it('rejects missing or too-short list ids', () => {
+    expect(extractPlaylistId('https://www.youtube.com/playlist')).toBeNull()
+    expect(extractPlaylistId('https://www.youtube.com/playlist?list=abc')).toBeNull()
+    expect(extractPlaylistId('https://vimeo.com/playlist?list=PL1234567890')).toBeNull()
+  })
+
+  it('recognises playlist intent only when there is no video', () => {
+    expect(isPlaylistUrl('https://www.youtube.com/playlist?list=PL1234567890')).toBe(true)
+    expect(isPlaylistUrl('https://www.youtube.com/playlist')).toBe(true)
+    expect(isPlaylistUrl('https://youtu.be/dQw4w9WgXcQ')).toBe(false)
+    expect(isPlaylistUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(false)
+    expect(isPlaylistUrl('dQw4w9WgXcQ')).toBe(false)
+    expect(isPlaylistUrl('https://vimeo.com/playlist?list=PL1234567890')).toBe(false)
   })
 })
 

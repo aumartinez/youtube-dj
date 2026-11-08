@@ -16,12 +16,7 @@ const directionIcon = computed(() =>
 )
 const fadePercent = computed(() => Math.round(state.fade.progress * 100))
 
-const buttonLabel = computed(() => {
-  if (state.fade.active) {
-    return `Cancel fade · ${state.fade.source} → ${state.fade.target} ${fadePercent.value}%`
-  }
-  return `Auto crossfade ${sourceSide.value} → ${targetSide.value}`
-})
+const buttonLabel = computed(() => (state.fade.active ? 'Cancel fade' : 'Auto crossfade'))
 
 /* ---------- timed auto fade ---------- */
 

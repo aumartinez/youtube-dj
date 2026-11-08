@@ -9,6 +9,7 @@ const mixer = useMixer()
 /** Minimal YT.Player stand-in: synchronous state transitions, no network. */
 class FakePlayer {
   static instances = []
+  static playlistIds = []
 
   constructor(element, options) {
     this.element = element
@@ -65,6 +66,18 @@ class FakePlayer {
     return { title: 'Fake video title' }
   }
 
+  cuePlaylist() {
+    this.playlist = FakePlayer.playlistIds
+  }
+
+  getPlaylist() {
+    return this.playlist ?? []
+  }
+
+  destroy() {
+    this.destroyed = true
+  }
+
   transition(status) {
     this.status = status
     this.events.onStateChange?.({ data: status, target: this })
@@ -118,6 +131,7 @@ beforeEach(() => {
   localStorage.clear()
   document.body.innerHTML = ''
   FakePlayer.instances = []
+  FakePlayer.playlistIds = []
   stubYouTube()
 
   // Deterministic fade start: the rAF stub records the launch but never ticks.
@@ -145,7 +159,10 @@ describe('App shell', () => {
     expect(wrapper.find('.playlist').exists()).toBe(true)
     expect(deck(wrapper, 'A').text()).toContain('Deck A')
     expect(deck(wrapper, 'B').text()).toContain('Deck B')
-    expect(wrapper.text()).toContain('Auto crossfade A → B')
+
+    // The direction lives in the strip below the button, not duplicated in it.
+    expect(button(wrapper, 'Auto crossfade').text().trim()).toBe('Auto crossfade')
+    expect(wrapper.find('.direction').text()).toContain('A → B')
   })
 
   it('creates one real player per deck once the API is ready', async () => {
@@ -195,6 +212,57 @@ describe('playlist', () => {
     expect(mixer.state.items[1].state).toBe('queued')
     expect(wrapper.findAll('.track')).toHaveLength(2)
     expect(wrapper.find('.track--playing').exists()).toBe(false)
+  })
+})
+
+describe('playlist import', () => {
+  async function submitUrl(wrapper, value) {
+    await wrapper.find('.playlist__input').setValue(value)
+    await wrapper.find('.playlist__form').trigger('submit')
+    await flushPromises()
+  }
+
+  it('imports a public playlist, skips duplicates and tears the probe player down', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+
+    FakePlayer.playlistIds = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc']
+    await submitUrl(wrapper, 'https://www.youtube.com/playlist?list=PL1234567890')
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    await flushPromises()
+
+    expect(mixer.state.items.map((item) => item.videoId)).toEqual([
+      'aaaaaaaaaaa',
+      'bbbbbbbbbbb',
+      'ccccccccccc',
+    ])
+    expect(wrapper.findAll('.track')).toHaveLength(3)
+
+    const probe = FakePlayer.instances[FakePlayer.instances.length - 1]
+    expect(probe.destroyed).toBe(true)
+  })
+
+  it('applies fetched titles without needing another interaction', async () => {
+    const wrapper = await mountApp()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => ({ title: 'Fetched title' }) })),
+    )
+
+    FakePlayer.playlistIds = ['bbbbbbbbbbb']
+    await submitUrl(wrapper, 'https://www.youtube.com/playlist?list=PL1234567890')
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    await flushPromises()
+
+    expect(wrapper.find('.track__title').text()).toBe('Fetched title')
+  })
+
+  it('rejects a playlist link without a list id', async () => {
+    const wrapper = await mountApp()
+    await submitUrl(wrapper, 'https://www.youtube.com/playlist')
+
+    expect(wrapper.text()).toContain('public YouTube playlist')
+    expect(wrapper.findAll('.track')).toHaveLength(0)
   })
 })
 

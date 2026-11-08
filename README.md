@@ -15,6 +15,10 @@ queue lives in `localStorage`.
 - **One shared playlist**: paste any YouTube link (`watch?v=`, `youtu.be`,
   `/shorts/`, `/embed/`, `/live/`, `music.youtube.com`, or a bare 11-char id),
   remove tracks, and drag the handle to reorder.
+- **Import public playlists**: paste a `playlist?list=…` URL and the app
+  enumerates it with a throwaway off-screen IFrame player (`cuePlaylist` →
+  `getPlaylist`), appends every new track to the queue (deduped), and fetches
+  titles. Public/unlisted only, still no API key, and nothing autoplays.
 - **Smart auto crossfade**: direction follows the live deck (A → B or B → A),
   selectable 4 / 8 / 12 / 16 s, starts the destination deck first, then
   animates the crossfader with `requestAnimationFrame`, which interpolates both
@@ -77,10 +81,12 @@ npm test
 1. Paste `https://www.youtube.com/watch?v=dQw4w9WgXcQ` → **Add track**, then
    add a second link.
 2. Press **Play** on Deck A: it takes the first queued track.
-3. Press **Auto crossfade A → B**: it assigns the second track to Deck B,
+3. Paste a `https://www.youtube.com/playlist?list=…` URL and press **Add** to
+   import a whole public playlist (duplicates are skipped).
+4. Press **Auto crossfade A → B**: it assigns the second track to Deck B,
    starts it, and fades 4–16 s (your choice) from A to B. The mixer's arrow
    shows the direction it will take.
-4. Use a row's **A** / **B** button to load or replace that deck's track — with
+5. Use a row's **A** / **B** button to load or replace that deck's track — with
    a track playing, the swap keeps the deck playing; otherwise it stays cued.
 5. Or flip **Timed auto fade** on, pick *Before end* `10` s (or *At track time*
    `90` s), and let it run: when Deck A reaches the cue it brings Deck B in by
@@ -139,6 +145,10 @@ No `gh-pages` branch and no committed `dist/`.
   "Unavailable / embedding disabled" message with a Release button.
 - Playback cannot be started without a user gesture. The app never fakes it;
   it shows a banner instead.
+- Playlist import reads only **public/unlisted** playlists. Private playlists
+  need the YouTube Data API (an API key + backend), which this app deliberately
+  avoids. Very large playlists and auto-generated `RD…` mixes may truncate or
+  fail; the app tells you instead of silently doing nothing.
 - Icons come from the Font Awesome 7 CDN (`cdn.jsdelivr.net`). If a blocker
   removes it, every control keeps its text label and still works.
 - Clearing site data or `localStorage` resets the queue.

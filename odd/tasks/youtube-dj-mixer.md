@@ -42,7 +42,12 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
   playing on the other deck cannot be stolen; a cued one can move between decks.
 - **S16** The mixer shows the crossfade direction as an explicit arrow between the A and B badges
   (it flips for B → A and pulses during a fade). Icons come from the Font Awesome 7 CDN and are
-  decorative: every control keeps a text label.
+  decorative: every control keeps a text label. The crossfade button itself reads only
+  "Auto crossfade" (or "Cancel fade"): the direction is stated once, in the strip below.
+- **S17** Paste a public playlist URL to import every track into the shared queue: a throwaway
+  off-screen IFrame player (320×240, ≥200×200 per API requirements) cues the list and
+  `getPlaylist()` enumerates it; new tracks are appended, duplicates skipped, titles fetched with
+  bounded concurrency, and nothing autoplays. Private playlists are out of scope (needs the Data API).
 
 ## Tasks
 
@@ -58,6 +63,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T8  | S13       | inline | done   | `lib/autofade.js` (+tests), store trigger, mixer-panel UI, 85 tests total |
 | T9  | S14       | inline | done   | Actions run green; live at https://aumartinez.github.io/youtube-dj/ (200, assets 200, 2 iframes) |
 | T10 | S15,S16   | inline | done   | `loadTrackOnDeck`, row A/B buttons, `.direction` arrow, FA 7.3.1 icons; 89 tests |
+| T11 | S16,S17   | inline | done   | concatenated button label, playlist import probe, proxy-safe titles; 96 tests |
 
 ## Log
 
@@ -155,3 +161,27 @@ Evidence: 89 tests (4 new: replace-while-playing, move-cued-to-other-deck, no-st
 direction arrow flips); `npm run build` clean; headless Edge with CDP added 3 tracks, cued one on
 Deck A via the row button, and reported 3 rows / 6 load buttons / 1 active / 1 disabled / state
 `loaded` / no error, with the arrow and icons rendered in a screenshot.
+
+**L8 (user request, verbatim, 2026-11-07)**
+
+"you added bloated content to the auto crossfade button, if you already have below the button a label
+signaling the direction of the crossfade, you can leave the button only as "crossfade" without the
+gibberish you left, a two side arrow, auto crossfade (correct), B -> A?"
+
+Decisions:
+- Button label is now exactly "Auto crossfade" (with the two-way arrow icon) or "Cancel fade" while
+  running. No source/target/percent in it: the `.direction` strip below already states
+  "Next crossfade A → B" and flips to B → A when Deck B is live.
+- Also delivered the approved public-playlist import: `collectPlaylistIds` mounts a throwaway
+  320×240 player off-screen, cues the list, polls `getPlaylist()` (verified: 14 IDs), appends
+  deduped tracks, fetches titles with concurrency 4, and always tears the probe down. The add field
+  routes playlist URLs through `submitUrl` → `importPlaylist`.
+
+Bug found and fixed: imported/single titles were written to the raw item object instead of its
+reactive proxy, so rows kept the fallback title until some other interaction re-rendered them
+(14/14 oEmbed calls were 200). `addTrack` and `importPlaylist` now keep the proxies from
+`state.items`, with a regression test that asserts the fetched title renders without interaction.
+
+Evidence: 96 tests. CDP against the built app imported a real public playlist: 14 rows, titles
+"Google I/O '26 Keynote" etc., no `playlist__import` banner left, probe iframe gone (2 iframes =
+the two decks), button text exactly "Auto crossfade".

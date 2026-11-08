@@ -33,7 +33,7 @@ import {
   releaseItem,
   reorderItems,
 } from '../lib/playlist'
-import { extractVideoId, oEmbedUrl } from '../lib/youtube'
+import { extractPlaylistId, extractVideoId, isPlaylistUrl, isVideoId, oEmbedUrl } from '../lib/youtube'
 import { loadPersistedState, savePersistedState, serializeState } from '../lib/storage'
 
 const DECK_IDS = ['A', 'B']
@@ -92,6 +92,7 @@ const state = reactive({
   fade: createFadeState(),
   // Runtime only, never persisted: which track already fired its cue.
   autoFadeRuntime: { firedFor: null, warnedFor: null },
+  importing: { active: false, phase: '', found: 0, added: 0, skipped: 0 },
   blockedDeck: null,
   restored: false,
   notices: [],
@@ -762,6 +763,198 @@ function checkAutoFadeTrigger() {
 
 // --- Playlist --------------------------------------------------------------
 
+// --- Playlist import (public playlists, no API key) -------------------------
+
+let probe = null
+
+function teardownProbe() {
+  if (!probe) return
+  try {
+    probe.player?.destroy?.()
+  } catch {
+    /* noop */
+  }
+  try {
+    probe.container?.remove?.()
+  } catch {
+    /* noop */
+  }
+  probe = null
+}
+
+/**
+ * Enumerates a public playlist with a throwaway off-screen player:
+ * cue the list, then read `getPlaylist()`. The IFrame API requires a viewport
+ * of at least 200x200, so the host is real but positioned off-screen.
+ */
+function collectPlaylistIds(playlistId, { timeoutMs = 12000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const YT = typeof window !== 'undefined' ? window.YT : null
+    if (typeof document === 'undefined' || !YT?.Player) {
+      reject(new Error('The YouTube API is not ready.'))
+      return
+    }
+
+    const container = document.createElement('div')
+    container.style.cssText =
+      'position:fixed;left:-10000px;top:0;width:320px;height:240px;overflow:hidden;pointer-events:none;'
+    document.body.appendChild(container)
+
+    const session = { container, player: null, timer: null, poll: null, done: false }
+    probe = session
+
+    const finish = (error, ids) => {
+      if (session.done) return
+      session.done = true
+      clearTimeout(session.timer)
+      clearInterval(session.poll)
+      if (probe === session) teardownProbe()
+      if (error) reject(error)
+      else resolve(ids)
+    }
+
+    session.timer = setTimeout(
+      () => finish(new Error('Timed out while reading that playlist.')),
+      timeoutMs + 2000,
+    )
+
+    try {
+      session.player = new YT.Player(container, {
+        width: 320,
+        height: 240,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          playsinline: 1,
+          listType: 'playlist',
+          list: playlistId,
+        },
+        events: {
+          onReady: (event) => {
+            session.player = event.target
+            try {
+              event.target.cuePlaylist({ list: playlistId, listType: 'playlist' })
+            } catch (error) {
+              finish(error)
+              return
+            }
+
+            let tries = 0
+            const check = () => {
+              if (session.done) return
+              let ids = []
+              try {
+                ids = event.target.getPlaylist?.() || []
+              } catch {
+                /* list not parsed yet */
+              }
+              if (ids.length) {
+                finish(null, ids)
+                return
+              }
+              tries += 1
+              if (tries > 24) {
+                finish(new Error('That playlist returned no public tracks.'))
+              }
+            }
+
+            session.poll = setInterval(check, 500)
+            check()
+          },
+          onError: () => finish(new Error('YouTube refused to load that playlist.')),
+        },
+      })
+    } catch (error) {
+      finish(error)
+    }
+  })
+}
+
+/** Fetches titles for a batch with a small concurrency limit. */
+async function fetchTitles(items, limit = 4) {
+  let cursor = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const item = items[cursor]
+      cursor += 1
+      await fetchTitle(item)
+    }
+  })
+  await Promise.all(workers)
+}
+
+/**
+ * Imports every track of a public playlist into the shared queue.
+ * Deduplicates against the existing queue and never autoplays.
+ */
+async function importPlaylist(input) {
+  const playlistId = extractPlaylistId(input)
+  if (!playlistId) {
+    return {
+      ok: false,
+      error: 'Paste a public YouTube playlist link (youtube.com/playlist?list=…).',
+    }
+  }
+  if (state.importing.active) {
+    return { ok: false, error: 'Another playlist import is already running.' }
+  }
+  if (state.apiStatus !== 'ready') {
+    return { ok: false, error: 'The YouTube API is still loading. Try again in a moment.' }
+  }
+
+  state.importing = { active: true, phase: 'Reading playlist…', found: 0, added: 0, skipped: 0 }
+
+  try {
+    const ids = await collectPlaylistIds(playlistId)
+    const seen = new Set(state.items.map((item) => item.videoId))
+    const fresh = []
+
+    for (const videoId of ids) {
+      if (!isVideoId(videoId) || seen.has(videoId)) {
+        state.importing.skipped += 1
+        continue
+      }
+      seen.add(videoId)
+      fresh.push(createPlaylistItem({ videoId }))
+    }
+
+    state.importing.found = ids.length
+    state.importing.added = fresh.length
+    state.items.push(...fresh)
+
+    // Same reason as addTrack: keep the reactive proxies, not the raw items.
+    const added = state.items.slice(state.items.length - fresh.length)
+
+    if (added.length) {
+      state.importing.phase = 'Fetching titles…'
+      await fetchTitles(added, 4)
+    }
+
+    const skipped = state.importing.skipped
+    notify(
+      fresh.length
+        ? `Imported ${fresh.length} track${fresh.length === 1 ? '' : 's'}${
+            skipped ? `, skipped ${skipped} already in the queue` : ''
+          }.`
+        : 'No new tracks: that playlist is already in the queue.',
+      fresh.length ? 'success' : 'info',
+    )
+    return { ok: true, added: fresh.length, skipped }
+  } catch (error) {
+    const message = error?.message ?? 'Playlist import failed.'
+    notify(`Playlist import failed: ${message}`, 'error')
+    return { ok: false, error: message }
+  } finally {
+    state.importing = { active: false, phase: '', found: 0, added: 0, skipped: 0 }
+  }
+}
+
+/** Single entry point for the add field: video URL or playlist URL. */
+function submitUrl(input) {
+  if (isPlaylistUrl(input)) return importPlaylist(input)
+  return addTrack(input)
+}
+
 async function fetchTitle(item) {
   if (typeof fetch !== 'function') return
   try {
@@ -794,8 +987,10 @@ function addTrack(input) {
 
   const item = createPlaylistItem({ videoId })
   state.items.push(item)
-  void fetchTitle(item)
-  return { ok: true, item }
+  // `item` is the raw object; mutate the reactive proxy so the row re-renders.
+  const stored = state.items[state.items.length - 1]
+  void fetchTitle(stored)
+  return { ok: true, item: stored }
 }
 
 function removeTrack(itemId) {
@@ -996,6 +1191,7 @@ function detachDeckContainer(deckId) {
 /** Full reset used by tests (and safe for a future remount flow). */
 export function resetMixerForTests() {
   persistSuspended = true
+  teardownProbe()
   fadeHandle?.cancel()
   fadeHandle = null
   clearTimeout(saveTimer)
@@ -1023,6 +1219,7 @@ export function resetMixerForTests() {
   state.settings.fadeDuration = DEFAULT_FADE_DURATION
   state.settings.autoFade = { ...DEFAULT_AUTO_FADE }
   state.autoFadeRuntime = { firedFor: null, warnedFor: null }
+  state.importing = { active: false, phase: '', found: 0, added: 0, skipped: 0 }
   state.crossfader = 0
   state.activeDeck = 'A'
   state.fade = createFadeState()
@@ -1050,6 +1247,8 @@ export const mixer = {
   setFadeDuration,
   setAutoFade,
   addTrack,
+  importPlaylist,
+  submitUrl,
   removeTrack,
   moveTrack,
   clearPlayed,

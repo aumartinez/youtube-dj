@@ -964,6 +964,14 @@ img {
   color: var(--danger);
 }
 
+.playlist__import {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--deck-b);
+}
+
 .playlist__empty {
   padding: 22px;
   border-radius: var(--radius-sm);
