@@ -47,6 +47,10 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 - **S18** First-run affordance: with an empty queue an empty deck shows "No tracks yet" and a
   button that scrolls to and focuses the add field; once the queue has tracks the same button
   becomes "Cue next track" and loads the first queued item without playing it.
+- **S20** A fade must never leave a surviving deck muted. If the outgoing track ends mid-fade, the
+  fader lands on the destination; if the destination dies mid-fade, it returns to the source. A deck
+  that starts playing while the other deck is idle and its own volume is 0 is made audible, and if
+  the audible deck ends while the other plays at 0 the fader moves to the living deck (dead-air guard).
 - **S19** Auto-generated mixes (`list=RD…`, `start_radio=1`) are detected explicitly: a mix URL
   with a video adds that seed video and shows a warning that the list cannot be read; a mix URL
   without a video is rejected with the same explanation instead of waiting on a probe that will
@@ -73,6 +77,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T11 | S16,S17   | inline | done   | concatenated button label, playlist import probe, proxy-safe titles; 96 tests |
 | T12 | S18       | inline | done   | empty-deck CTA + `cueNextTrack`; 98 tests |
 | T13 | S19       | inline | done   | `isMixUrl` detection + explicit warning/rejection; 101 tests |
+| T14 | S20       | inline | done   | fade-landing + dead-air + zero-volume guards; 104 tests |
 
 ## Log
 
@@ -232,3 +237,25 @@ explanation, instead of a 12 s probe ending in a generic "no public tracks" erro
 
 Evidence: 101 tests, including the exact reported URL (adds exactly one row for `o7lC8JAWWEA` and
 renders `.playlist__warning`) and a mix-only URL (rejected, queue untouched).
+
+**L11 (user report, verbatim, 2026-11-07)**
+
+"autocrossfader failed? after first track was completed the second track went mute"
+
+Root cause: a crossfade snaps the fader to the source deck (volume 0 on the target) before starting
+the destination. If the source track ended while the fade was still waiting for both decks to reach
+PLAYING (slow buffer, autoplay block) or during the fade itself, nothing moved the fader back: the
+destination kept playing at volume 0, so it looked live but was silent. A manual Play on an idle
+deck with the fader parked on the other side produced the same dead air.
+
+Fix (three guards in stores/mixer.js):
+1. `handleTrackEnded`: if the fade's source ended and the other deck plays, cancel the fade and snap
+   the fader to the destination; if the fade's target ended, snap back to the source.
+2. PLAYING handler: if no fade is running, the other deck is idle and this deck's volume is 0, set
+   the fader to this deck ("the only playing deck must be audible").
+3. `handleTrackEnded` dead-air guard: the audible deck ended while the other plays at 0 -> move the
+   fader to the living deck. Also the `autoCrossfade` timeout path now snaps to the target when the
+   source is gone but the target did start.
+
+Evidence: RED first (2 failures: crossfader stayed 0, deck volume 0), then 104/104 green with three
+new tests: source ends mid-fade, destination dies mid-fade, only playing deck at zero volume.

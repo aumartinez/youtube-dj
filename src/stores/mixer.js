@@ -236,6 +236,17 @@ function handlePlayerStateChange(deckId, status) {
         item.error = null
         adoptPlayerTitle(deckId, item)
       }
+
+      // If nothing else is audible, this deck must be heard: a deck that starts
+      // playing at volume 0 would look live but sound mute.
+      if (!state.fade.active) {
+        const other = otherDeck(deckId)
+        const volumes = crossfaderVolumes(state.crossfader)
+        if (volumes[deckId] === 0 && !state.decks[other].playing) {
+          setCrossfader(sideToCrossfader(deckId))
+          state.activeDeck = deckId
+        }
+      }
       break
     }
     case PLAYER_STATE.PAUSED: {
@@ -363,6 +374,26 @@ function handleTrackEnded(deckId) {
   deck.currentTime = 0
   cuedVideoId[deckId] = null
 
+  const other = otherDeck(deckId)
+  const otherPlaying = state.decks[other].playing
+
+  // A fade that loses one of its decks must land somewhere audible, otherwise
+  // the surviving deck keeps playing at volume 0 (the "second track went mute" bug).
+  if (state.fade.active && otherPlaying) {
+    if (state.fade.source === deckId) {
+      // Outgoing track ended before the fade finished: land on the destination.
+      cancelFade(true)
+      state.fade.progress = 1
+      setCrossfader(sideToCrossfader(other))
+      state.activeDeck = other
+    } else if (state.fade.target === deckId) {
+      // Destination died: stay on the source instead of fading into silence.
+      cancelFade(true)
+      setCrossfader(sideToCrossfader(other))
+      state.activeDeck = other
+    }
+  }
+
   const finished = deckItem(state.items, deckId)
   if (finished) markPlayed(state.items, finished.id)
 
@@ -375,9 +406,16 @@ function handleTrackEnded(deckId) {
     notify(`Deck ${deckId} finished. The queue is empty.`, 'info')
   }
 
-  if (state.activeDeck === deckId) {
-    const other = otherDeck(deckId)
-    if (state.decks[other].playing) state.activeDeck = other
+  if (state.activeDeck === deckId && state.decks[other].playing) {
+    state.activeDeck = other
+  }
+
+  // Dead-air guard: the audible deck ended while the other deck was playing
+  // silently at the far side of the fader. Continue with the living deck.
+  const volumes = crossfaderVolumes(state.crossfader)
+  if (!state.fade.active && otherPlaying && volumes[deckId] > 0 && volumes[other] === 0) {
+    setCrossfader(sideToCrossfader(other))
+    state.activeDeck = other
   }
 }
 
@@ -709,7 +747,16 @@ function autoCrossfade() {
     if (!ready) {
       state.fade.active = false
       state.fade.progress = 0
-      state.blockedDeck = !state.decks[sourceId].playing ? sourceId : targetId
+
+      const sourcePlaying = state.decks[sourceId].playing
+      // The destination did start but the source is gone: keep the music alive.
+      if (!sourcePlaying && state.decks[targetId].playing) {
+        setCrossfader(sideToCrossfader(targetId))
+        state.activeDeck = targetId
+        return
+      }
+
+      state.blockedDeck = sourcePlaying ? targetId : sourceId
       notify('Could not start both decks automatically. Press Play on each deck, then fade again.', 'warn')
       return
     }

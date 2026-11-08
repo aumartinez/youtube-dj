@@ -393,6 +393,53 @@ describe('crossfade', () => {
     expect(wrapper.text()).toContain('needs a second track')
   })
 
+  it('lands on the destination when the outgoing track ends mid-fade', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+    await click(deck(wrapper, 'A'), 'Play')
+    await click(wrapper, 'Auto crossfade')
+    await flushPromises()
+
+    expect(FakePlayer.instances[1].volume).toBe(0)
+
+    FakePlayer.instances[0].end()
+    await flushPromises()
+
+    expect(mixer.state.crossfader).toBe(1)
+    expect(mixer.state.decks.B.volume).toBe(100)
+    expect(FakePlayer.instances[1].volume).toBe(100)
+    expect(mixer.state.activeDeck).toBe('B')
+  })
+
+  it('keeps the source audible when the destination dies mid-fade', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+    await click(deck(wrapper, 'A'), 'Play')
+    await click(wrapper, 'Auto crossfade')
+    await flushPromises()
+
+    FakePlayer.instances[1].end()
+    await flushPromises()
+
+    expect(mixer.state.crossfader).toBe(0)
+    expect(FakePlayer.instances[0].volume).toBe(100)
+    expect(mixer.state.decks.A.playing).toBe(true)
+  })
+
+  it('never leaves the only playing deck at zero volume', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+
+    mixer.moveCrossfader(1)
+    await click(deck(wrapper, 'A'), 'Play')
+    await flushPromises()
+
+    expect(mixer.state.decks.A.volume).toBe(100)
+    expect(FakePlayer.instances[0].volume).toBe(100)
+  })
+
   it('shows the crossfade direction with an arrow that flips', async () => {
     const wrapper = await mountApp()
     await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
