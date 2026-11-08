@@ -390,18 +390,52 @@ img {
 }
 
 .deck__progress {
-  height: 4px;
+  position: relative;
+  height: 8px;
   border-radius: 999px;
   background: var(--panel-2);
-  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
 }
 
 .deck__progress span {
   display: block;
+  position: relative;
   height: 100%;
   border-radius: inherit;
   background: var(--accent);
   transition: width 400ms linear;
+}
+
+.deck__progress span::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -5px;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  border: 2px solid #0b0e16;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.deck__progress:hover span::after,
+.deck__progress:focus-visible span::after,
+.deck__progress--scrubbing span::after {
+  opacity: 1;
+}
+
+.deck__progress:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.deck__progress--scrubbing span {
+  transition: none;
 }
 
 .deck__controls {

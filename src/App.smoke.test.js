@@ -19,6 +19,7 @@ class FakePlayer {
     this.videoId = null
     this.currentTime = 0
     this.duration = 0
+    this.seekToCalls = []
     this.events = options.events ?? {}
     FakePlayer.instances.push(this)
     queueMicrotask(() => this.events.onReady?.({ target: this }))
@@ -60,6 +61,11 @@ class FakePlayer {
 
   getDuration() {
     return this.duration
+  }
+
+  seekTo(seconds) {
+    this.currentTime = seconds
+    this.seekToCalls.push(seconds)
   }
 
   getVideoData() {
@@ -447,6 +453,51 @@ describe('crossfade', () => {
     expect(mixer.state.decks.B.volume).toBe(100)
     expect(FakePlayer.instances[1].volume).toBe(100)
   }, 15000)
+
+  it('seeks a deck within bounds', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await click(deck(wrapper, 'A'), 'Play')
+    const player = FakePlayer.instances[0]
+    player.duration = 100
+    mixer.state.decks.A.duration = 100
+
+    expect(mixer.seekDeck('A', 42)).toBe(true)
+    expect(player.seekToCalls.at(-1)).toBe(42)
+    expect(mixer.state.decks.A.currentTime).toBe(42)
+
+    mixer.seekDeck('A', 999)
+    expect(player.seekToCalls.at(-1)).toBe(100)
+
+    mixer.seekDeck('A', -5)
+    expect(player.seekToCalls.at(-1)).toBe(0)
+  })
+
+  it('seeks from the progress bar by pointer and keyboard', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await click(deck(wrapper, 'A'), 'Play')
+    const player = FakePlayer.instances[0]
+    player.duration = 100
+    mixer.state.decks.A.duration = 100
+    mixer.state.decks.A.currentTime = 10
+
+    const bar = deck(wrapper, 'A').find('.deck__progress')
+    Object.defineProperty(bar.element, 'getBoundingClientRect', {
+      value: () => ({ left: 0, width: 200, top: 0, height: 8, right: 200, bottom: 8 }),
+    })
+
+    bar.element.dispatchEvent(new MouseEvent('pointerdown', { clientX: 100, bubbles: true }))
+    await flushPromises()
+    bar.element.dispatchEvent(new MouseEvent('pointerup', { clientX: 100, bubbles: true }))
+    await flushPromises()
+
+    expect(player.seekToCalls.at(-1)).toBeCloseTo(50, 1)
+
+    await bar.trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
+    expect(player.seekToCalls.at(-1)).toBeCloseTo(55, 1)
+  })
 
   it('never leaves the only playing deck at zero volume', async () => {
     const wrapper = await mountApp()

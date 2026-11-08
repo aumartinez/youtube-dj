@@ -12,6 +12,9 @@ queue lives in `localStorage`.
   [IFrame Player API](https://developers.google.com/youtube/iframe_api_reference).
 - **Play / Pause / Stop per deck.** Stop resets that deck's playback without
   advancing the playlist; the same track stays attached and restarts from zero.
+- **Seek on the deck**: click or drag the progress bar to jump anywhere in the
+  current video, or focus it and use ← / → for 5-second steps. Works while
+  playing and while paused.
 - **One shared playlist**: paste any YouTube link (`watch?v=`, `youtu.be`,
   `/shorts/`, `/embed/`, `/live/`, `music.youtube.com`, or a bare 11-char id),
   remove tracks, and drag the handle to reorder.

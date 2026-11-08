@@ -9,6 +9,7 @@ const props = defineProps({
 
 const mixer = useMixer()
 const frame = ref(null)
+const scrubRatio = ref(null)
 
 const deck = computed(() => mixer.state.decks[props.deckId])
 const item = computed(() => mixer.deckItem(props.deckId))
@@ -19,6 +20,54 @@ const progress = computed(() => {
 })
 const stateLabel = computed(() => item.value?.state ?? 'empty')
 const queueEmpty = computed(() => mixer.state.items.length === 0)
+
+const displayProgress = computed(() =>
+  scrubRatio.value !== null ? scrubRatio.value * 100 : progress.value,
+)
+
+const displayTime = computed(() =>
+  scrubRatio.value !== null
+    ? formatClock(scrubRatio.value * deck.value.duration)
+    : formatClock(deck.value.currentTime),
+)
+
+function ratioFromPointer(event) {
+  const rect = event.currentTarget?.getBoundingClientRect?.()
+  if (!rect || !rect.width) return 0
+  return Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+}
+
+function startScrub(event) {
+  if (!(deck.value.duration > 0)) return
+  try {
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  } catch {
+    /* jsdom and old browsers */
+  }
+  scrubRatio.value = ratioFromPointer(event)
+}
+
+function moveScrub(event) {
+  if (scrubRatio.value === null) return
+  scrubRatio.value = ratioFromPointer(event)
+}
+
+function endScrub() {
+  if (scrubRatio.value === null) return
+  const ratio = scrubRatio.value
+  scrubRatio.value = null
+  mixer.seekDeck(props.deckId, ratio * deck.value.duration)
+}
+
+function onSeekKey(event) {
+  if (!(deck.value.duration > 0)) return
+  const step = event.key === 'ArrowRight' ? 5 : event.key === 'ArrowLeft' ? -5 : 0
+  if (!step) return
+  event.preventDefault()
+  const base =
+    scrubRatio.value !== null ? scrubRatio.value * deck.value.duration : deck.value.currentTime
+  mixer.seekDeck(props.deckId, base + step)
+}
 
 /** First-run affordance: with nothing in the queue, send the user to the add field. */
 function primaryDeckAction() {
@@ -101,13 +150,29 @@ onBeforeUnmount(() => {
         {{ item?.title ?? 'No track loaded' }}
       </h2>
       <div class="deck__time">
-        <span>{{ formatClock(deck.currentTime) }}</span>
+        <span>{{ displayTime }}</span>
         <span>{{ formatClock(deck.duration) }}</span>
       </div>
     </div>
 
-    <div class="deck__progress" role="presentation">
-      <span :style="{ width: `${progress}%` }"></span>
+    <div
+      class="deck__progress"
+      :class="{ 'deck__progress--scrubbing': scrubRatio !== null }"
+      role="slider"
+      :tabindex="deck.duration > 0 ? 0 : -1"
+      :aria-label="`Seek Deck ${deckId}`"
+      aria-valuemin="0"
+      :aria-valuemax="Math.round(deck.duration)"
+      :aria-valuenow="Math.round(deck.currentTime)"
+      :aria-valuetext="`${displayTime} of ${formatClock(deck.duration)}`"
+      :aria-disabled="deck.duration > 0 ? 'false' : 'true'"
+      @pointerdown="startScrub"
+      @pointermove="moveScrub"
+      @pointerup="endScrub"
+      @pointercancel="endScrub"
+      @keydown="onSeekKey"
+    >
+      <span :style="{ width: `${displayProgress}%` }"></span>
     </div>
 
     <div class="deck__controls">

@@ -572,6 +572,23 @@ function resumeFromGesture() {
   playDeck(deckId)
 }
 
+/** Seeks a deck's player to a clamped position in seconds. */
+function seekDeck(deckId, seconds) {
+  const deck = state.decks[deckId]
+  const player = players[deckId]
+  if (!player || !deck.ready || !(deck.duration > 0)) return false
+
+  const value = Number(seconds)
+  const target = Math.max(0, Math.min(deck.duration, Number.isFinite(value) ? value : 0))
+  try {
+    player.seekTo(target, true)
+  } catch {
+    return false
+  }
+  deck.currentTime = target
+  return true
+}
+
 /** Cues the first queued track on an idle deck without starting playback. */
 function cueNextTrack(deckId) {
   const deck = state.decks[deckId]
@@ -1379,6 +1396,7 @@ export const mixer = {
   playDeck,
   pauseDeck,
   stopDeck,
+  seekDeck,
   ejectDeck,
   resumeFromGesture,
   cueNextTrack,

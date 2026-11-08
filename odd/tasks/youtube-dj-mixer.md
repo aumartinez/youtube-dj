@@ -47,6 +47,9 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 - **S18** First-run affordance: with an empty queue an empty deck shows "No tracks yet" and a
   button that scrolls to and focuses the add field; once the queue has tracks the same button
   becomes "Cue next track" and loads the first queued item without playing it.
+- **S23** The deck progress bar is an accessible seek slider: click or drag to jump, with a live
+  scrub preview and commit on release; focus + ← / → moves 5 s. Seeking is clamped to the video
+  duration and works while playing or paused (`player.seekTo`).
 - **S22** Repeat list: an opt-in toggle. When no `queued` item remains and the toggle is on, every
   `played` item is requeued in list order and the first one is cued (never autoplayed, preserving
   S7). A manual **Requeue played** action does the same on demand. Both feed every "next track"
@@ -88,6 +91,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T14 | S20       | inline | done   | fade-landing + dead-air + zero-volume guards; 104 tests |
 | T15 | S21       | inline | done   | rAF-independent fade watchdog; 107 tests |
 | T16 | S22       | inline | done   | repeat toggle + requeue button, `nextQueuedOrRequeued`; 112 tests |
+| T17 | S23       | inline | done   | seekable progress slider (pointer + keyboard); 114 tests |
 
 ## Log
 
@@ -302,3 +306,18 @@ it. Repeat never autoplays: it requeues and cues, preserving S7. The flag persis
 
 Evidence: RED first (4 failures: storage flag + 3 store/UI tests), then 112/112 green. New tests:
 toggle from the header, requeue-and-cue at the end, exhausted when off, manual requeue button.
+
+**L14 (user request, verbatim, 2026-11-08)**
+
+"One last enhacement bro, I see the progress bar, is it possible to make it "draggable" or "clickable"
+to move the progress of the video that is being played?"
+
+Implementation: `seekDeck(deckId, seconds)` clamps to the duration and calls `player.seekTo(target,
+true)`, updating `currentTime` immediately. `DeckPanel` renders the bar as `role="slider"` with
+pointer handlers (pointerdown/move/up/cancel + `setPointerCapture`) and a scrub preview so dragging
+shows the target time without spamming seek calls; the seek commits on release. Keyboard: ArrowLeft
+/ ArrowRight step 5 s. A visible knob appears on hover/focus/scrub; `touch-action: none` keeps the
+drag from scrolling on mobile.
+
+Evidence: RED first (2 failures: missing `seekDeck`, pointer test), then 114/114 green. Tests cover
+store clamping (42, 999 -> 100, -5 -> 0) and a pointer click at 50% plus an ArrowRight step.
