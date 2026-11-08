@@ -3,6 +3,7 @@ import {
   extractPlaylistId,
   extractVideoId,
   formatClock,
+  isMixUrl,
   isPlaylistUrl,
   isVideoId,
   thumbnailUrl,
@@ -75,6 +76,17 @@ describe('playlists', () => {
     expect(isPlaylistUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(false)
     expect(isPlaylistUrl('dQw4w9WgXcQ')).toBe(false)
     expect(isPlaylistUrl('https://vimeo.com/playlist?list=PL1234567890')).toBe(false)
+  })
+
+  it('detects auto-generated mixes and radios', () => {
+    expect(
+      isMixUrl('https://www.youtube.com/watch?v=o7lC8JAWWEA&list=RDo7lC8JAWWEA&start_radio=1'),
+    ).toBe(true)
+    expect(isMixUrl('https://www.youtube.com/playlist?list=RDo7lC8JAWWEA')).toBe(true)
+    expect(isMixUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ&start_radio=1')).toBe(true)
+    expect(isMixUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890')).toBe(false)
+    expect(isMixUrl('https://youtu.be/dQw4w9WgXcQ')).toBe(false)
+    expect(isMixUrl('not a url')).toBe(false)
   })
 })
 

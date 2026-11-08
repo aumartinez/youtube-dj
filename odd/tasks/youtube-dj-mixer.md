@@ -47,6 +47,10 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 - **S18** First-run affordance: with an empty queue an empty deck shows "No tracks yet" and a
   button that scrolls to and focuses the add field; once the queue has tracks the same button
   becomes "Cue next track" and loads the first queued item without playing it.
+- **S19** Auto-generated mixes (`list=RD…`, `start_radio=1`) are detected explicitly: a mix URL
+  with a video adds that seed video and shows a warning that the list cannot be read; a mix URL
+  without a video is rejected with the same explanation instead of waiting on a probe that will
+  never return tracks.
 - **S17** Paste a public playlist URL to import every track into the shared queue: a throwaway
   off-screen IFrame player (320×240, ≥200×200 per API requirements) cues the list and
   `getPlaylist()` enumerates it; new tracks are appended, duplicates skipped, titles fetched with
@@ -68,6 +72,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T10 | S15,S16   | inline | done   | `loadTrackOnDeck`, row A/B buttons, `.direction` arrow, FA 7.3.1 icons; 89 tests |
 | T11 | S16,S17   | inline | done   | concatenated button label, playlist import probe, proxy-safe titles; 96 tests |
 | T12 | S18       | inline | done   | empty-deck CTA + `cueNextTrack`; 98 tests |
+| T13 | S19       | inline | done   | `isMixUrl` detection + explicit warning/rejection; 101 tests |
 
 ## Log
 
@@ -207,3 +212,23 @@ Evidence: 98 tests, including a first-run test asserting the CTA focuses the add
 test asserting the deck stays `loaded`/not playing. CDP on a fresh profile: initial overlay text
 correct, click focused `playlist__input`, after adding one track the button became "Cue next track",
 clicking it on Deck B produced title "YouTube Developers Live…", state `loaded`, not playing.
+
+**L10 (user reports, verbatim, 2026-11-07)**
+
+"This is list URL: https://www.youtube.com/watch?v=o7lC8JAWWEA&list=RDo7lC8JAWWEA&start_radio=1"
+then "it is not getting added?" / "it only adds the first item from the list".
+
+Finding (verified four ways with throwaway probe pages, including a muted `loadPlaylist` with
+autoplay enabled): this is an auto-generated radio/mix (`list=RD…`, `start_radio=1`). `cuePlaylist`
+leaves the player in state 5 with `getPlaylist()` returning 0 ids; `loadPlaylist` also returns 0 ids
+after 20 s, and even muted it stays in state 5 with 0 ids. YouTube does not expose mix track lists to
+the IFrame API, so no keyless client can enumerate them; `list`/`index` are just YouTube frontend
+routing params, and the public Data API does not serve auto-generated mixes.
+
+Decision: add `isMixUrl` (`list` starting with `RD`, or `start_radio=1`). A mix URL that carries a
+video still adds that single video, plus a persistent inline warning that the list cannot be read
+(not a toast that disappears). A mix URL without a video is rejected immediately with the same
+explanation, instead of a 12 s probe ending in a generic "no public tracks" error.
+
+Evidence: 101 tests, including the exact reported URL (adds exactly one row for `o7lC8JAWWEA` and
+renders `.playlist__warning`) and a mix-only URL (rejected, queue untouched).

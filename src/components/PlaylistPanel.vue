@@ -8,6 +8,7 @@ const mixer = useMixer()
 const listElement = ref(null)
 const url = ref('')
 const formError = ref('')
+const formWarning = ref('')
 let sortable = null
 
 const counts = computed(() => mixer.trackCounts.value)
@@ -16,12 +17,14 @@ const isImporting = computed(() => mixer.state.importing.active)
 
 async function submit() {
   formError.value = ''
+  formWarning.value = ''
   const result = await mixer.submitUrl(url.value)
   if (!result.ok) {
     formError.value = result.error
     return
   }
   url.value = ''
+  if (result.warning) formWarning.value = result.warning
 }
 
 function onDragEnd(event) {
@@ -91,6 +94,7 @@ onBeforeUnmount(() => {
       </button>
     </form>
     <p v-if="formError" class="playlist__error" role="alert">{{ formError }}</p>
+    <p v-if="formWarning" class="playlist__warning" role="status">{{ formWarning }}</p>
 
     <p v-if="isImporting" class="playlist__import" role="status">
       <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>

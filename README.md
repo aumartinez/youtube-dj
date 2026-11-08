@@ -149,8 +149,12 @@ No `gh-pages` branch and no committed `dist/`.
   it shows a banner instead.
 - Playlist import reads only **public/unlisted** playlists. Private playlists
   need the YouTube Data API (an API key + backend), which this app deliberately
-  avoids. Very large playlists and auto-generated `RD…` mixes may truncate or
-  fail; the app tells you instead of silently doing nothing.
+  avoids. Very large playlists may truncate; the app tells you instead of
+  silently doing nothing.
+- **Auto-generated mixes and radios** (`list=RD…`, `start_radio=1`) cannot be
+  enumerated by the player API — verified: cued or loaded, `getPlaylist()` stays
+  empty. The app adds the referenced video and warns you; use a public `PL…`
+  playlist for bulk import.
 - Icons come from the Font Awesome 7 CDN (`cdn.jsdelivr.net`). If a blocker
   removes it, every control keeps its text label and still works.
 - Clearing site data or `localStorage` resets the queue.

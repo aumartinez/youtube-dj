@@ -33,7 +33,14 @@ import {
   releaseItem,
   reorderItems,
 } from '../lib/playlist'
-import { extractPlaylistId, extractVideoId, isPlaylistUrl, isVideoId, oEmbedUrl } from '../lib/youtube'
+import {
+  extractPlaylistId,
+  extractVideoId,
+  isMixUrl,
+  isPlaylistUrl,
+  isVideoId,
+  oEmbedUrl,
+} from '../lib/youtube'
 import { loadPersistedState, savePersistedState, serializeState } from '../lib/storage'
 
 const DECK_IDS = ['A', 'B']
@@ -915,6 +922,14 @@ async function fetchTitles(items, limit = 4) {
  * Deduplicates against the existing queue and never autoplays.
  */
 async function importPlaylist(input) {
+  if (isMixUrl(input)) {
+    return {
+      ok: false,
+      error:
+        'That is an auto-generated YouTube mix. YouTube does not expose its track list — paste a video link or a public playlist (list=PL…).',
+    }
+  }
+
   const playlistId = extractPlaylistId(input)
   if (!playlistId) {
     return {
@@ -1001,9 +1016,13 @@ function addTrack(input) {
   if (!videoId) {
     return {
       ok: false,
-      error: 'Paste a valid YouTube link (watch, youtu.be, shorts or embed) or a bare video id.',
+      error: isMixUrl(input)
+        ? 'That is an auto-generated YouTube mix. YouTube does not expose its track list — paste a video link or a public playlist (list=PL…).'
+        : 'Paste a valid YouTube link (watch, youtu.be, shorts or embed) or a bare video id.',
     }
   }
+
+  const mix = isMixUrl(input)
 
   const duplicate = state.items.find(
     (item) => item.videoId === videoId && item.state !== ITEM_STATES.PLAYED,
@@ -1017,6 +1036,16 @@ function addTrack(input) {
   // `item` is the raw object; mutate the reactive proxy so the row re-renders.
   const stored = state.items[state.items.length - 1]
   void fetchTitle(stored)
+
+  if (mix) {
+    return {
+      ok: true,
+      item: stored,
+      warning:
+        'YouTube does not expose auto-generated mix/radio track lists. Added just that video — copy the other videos individually, or use a public playlist (list=PL…).',
+    }
+  }
+
   return { ok: true, item: stored }
 }
 

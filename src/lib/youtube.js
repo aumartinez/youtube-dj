@@ -94,6 +94,19 @@ export function isPlaylistUrl(input) {
   return url.pathname.replace(/\/+$/, '').toLowerCase() === '/playlist'
 }
 
+/**
+ * True for auto-generated mixes/radios (`list=RD…`, `start_radio=1`).
+ * YouTube does not expose their track list to the IFrame API, so the app can
+ * only take the seed video and must say so.
+ */
+export function isMixUrl(input) {
+  const url = parseYouTubeUrl(input)
+  if (!url) return false
+  const list = url.searchParams.get('list')
+  if (typeof list === 'string' && /^RD/.test(list)) return true
+  return url.searchParams.get('start_radio') === '1'
+}
+
 export function watchUrl(videoId) {
   return `https://www.youtube.com/watch?v=${videoId}`
 }

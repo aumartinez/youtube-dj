@@ -257,6 +257,27 @@ describe('playlist import', () => {
     expect(wrapper.find('.track__title').text()).toBe('Fetched title')
   })
 
+  it('adds only the seed video for a mix url and explains why', async () => {
+    const wrapper = await mountApp()
+    await submitUrl(
+      wrapper,
+      'https://www.youtube.com/watch?v=o7lC8JAWWEA&list=RDo7lC8JAWWEA&start_radio=1',
+    )
+
+    expect(mixer.state.items).toHaveLength(1)
+    expect(mixer.state.items[0].videoId).toBe('o7lC8JAWWEA')
+    expect(wrapper.find('.playlist__warning').exists()).toBe(true)
+    expect(wrapper.find('.playlist__warning').text()).toContain('does not expose')
+  })
+
+  it('rejects a mix url that has no video to fall back to', async () => {
+    const wrapper = await mountApp()
+    await submitUrl(wrapper, 'https://www.youtube.com/playlist?list=RDo7lC8JAWWEA')
+
+    expect(wrapper.text()).toContain('auto-generated YouTube mix')
+    expect(wrapper.findAll('.track')).toHaveLength(0)
+  })
+
   it('rejects a playlist link without a list id', async () => {
     const wrapper = await mountApp()
     await submitUrl(wrapper, 'https://www.youtube.com/playlist')
