@@ -46,6 +46,11 @@ export function fadeValueAt(startValue, targetValue, progress) {
 /**
  * Drives a fade with requestAnimationFrame. The clock and the frame
  * scheduler are injected so the behavior is deterministic in tests.
+ *
+ * `watchdogMs` adds a fallback driver for hidden tabs, where browsers stop
+ * rAF entirely: if no frame arrived within that window, the watchdog steps the
+ * fade itself. Progress is derived from elapsed time, so the fade still lands
+ * on schedule with coarse steps.
  * Returns a handle with `cancel()`.
  */
 export function runFade({
@@ -57,31 +62,61 @@ export function runFade({
   cancelFrame,
   onUpdate,
   onDone,
+  watchdogMs = 0,
+  setIntervalFn,
+  clearIntervalFn,
 }) {
   const startedAt = now()
   let frameId = null
+  let watchdogId = null
+  let lastTick = startedAt
+  let finished = false
   let cancelled = false
 
-  const step = () => {
-    if (cancelled) return
-    const elapsed = now() - startedAt
-    const progress = durationMs <= 0 ? 1 : clamp01(elapsed / durationMs)
-    onUpdate?.(fadeValueAt(from, to, progress), progress)
-
-    if (progress < 1) {
-      frameId = requestFrame(step)
-    } else {
-      onDone?.()
+  const stopWatchdog = () => {
+    if (watchdogId !== null) {
+      clearIntervalFn?.(watchdogId)
+      watchdogId = null
     }
   }
 
-  frameId = requestFrame(step)
+  const step = (viaWatchdog) => {
+    if (cancelled || finished) return
+    const elapsed = now() - startedAt
+    const progress = durationMs <= 0 ? 1 : clamp01(elapsed / durationMs)
+    lastTick = now()
+    onUpdate?.(fadeValueAt(from, to, progress), progress)
+
+    if (progress >= 1) {
+      finished = true
+      stopWatchdog()
+      onDone?.()
+      return
+    }
+
+    if (!viaWatchdog) {
+      frameId = requestFrame(frame)
+    }
+  }
+
+  const frame = () => step(false)
+
+  frameId = requestFrame(frame)
+
+  if (watchdogMs > 0 && typeof setIntervalFn === 'function') {
+    watchdogId = setIntervalFn(() => {
+      if (cancelled || finished) return
+      if (now() - lastTick < watchdogMs) return
+      step(true)
+    }, watchdogMs)
+  }
 
   return {
     cancel() {
       if (cancelled) return
       cancelled = true
       if (frameId !== null) cancelFrame?.(frameId)
+      stopWatchdog()
     },
   }
 }

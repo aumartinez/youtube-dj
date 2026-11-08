@@ -676,6 +676,10 @@ function startFadeAnimation(sourceId, targetId, durationMs) {
     now: () => (typeof performance !== 'undefined' ? performance.now() : Date.now()),
     requestFrame: (callback) => requestAnimationFrame(callback),
     cancelFrame: (id) => cancelAnimationFrame(id),
+    // Hidden tabs stop rAF; the watchdog keeps the fade on schedule.
+    watchdogMs: 250,
+    setIntervalFn: (callback, ms) => setInterval(callback, ms),
+    clearIntervalFn: (id) => clearInterval(id),
     onUpdate: (value, progress) => {
       state.crossfader = value
       state.fade.progress = progress

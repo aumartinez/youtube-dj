@@ -157,4 +157,8 @@ No `gh-pages` branch and no committed `dist/`.
   playlist for bulk import.
 - Icons come from the Font Awesome 7 CDN (`cdn.jsdelivr.net`). If a blocker
   removes it, every control keeps its text label and still works.
+- Crossfades keep running when the tab is hidden (a time-based watchdog replaces
+  `requestAnimationFrame`, which browsers pause). Background browser throttling
+  can still delay the cue check by about a second, longer after several minutes
+  hidden.
 - Clearing site data or `localStorage` resets the queue.

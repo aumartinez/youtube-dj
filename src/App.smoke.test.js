@@ -428,6 +428,26 @@ describe('crossfade', () => {
     expect(mixer.state.decks.A.playing).toBe(true)
   })
 
+  it('finishes a fade even when no animation frame arrives (background tab)', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+    mixer.setFadeDuration(4)
+    await click(deck(wrapper, 'A'), 'Play')
+    await click(wrapper, 'Auto crossfade')
+    expect(mixer.state.fade.active).toBe(true)
+
+    // The global rAF stub never calls back, like a hidden tab. Only the
+    // time-based watchdog can complete the fade.
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+    await flushPromises()
+
+    expect(mixer.state.fade.active).toBe(false)
+    expect(mixer.state.crossfader).toBe(1)
+    expect(mixer.state.decks.B.volume).toBe(100)
+    expect(FakePlayer.instances[1].volume).toBe(100)
+  }, 15000)
+
   it('never leaves the only playing deck at zero volume', async () => {
     const wrapper = await mountApp()
     await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')

@@ -167,4 +167,72 @@ describe('runFade', () => {
     clock.run(500)
     expect(onUpdate).toHaveBeenCalledTimes(1)
   })
+
+  it('finishes with a watchdog when animation frames never arrive', () => {
+    let time = 0
+    const timers = []
+    const onUpdate = vi.fn()
+    const onDone = vi.fn()
+
+    runFade({
+      from: 0,
+      to: 1,
+      durationMs: 1000,
+      now: () => time,
+      requestFrame: () => 1, // hidden tab: never fires
+      cancelFrame: () => {},
+      onUpdate,
+      onDone,
+      watchdogMs: 250,
+      setIntervalFn: (callback, ms) => {
+        timers.push({ callback, ms })
+        return timers.length
+      },
+      clearIntervalFn: () => {},
+    })
+
+    expect(timers).toHaveLength(1)
+    expect(timers[0].ms).toBe(250)
+
+    time = 500
+    timers[0].callback()
+    expect(onUpdate).toHaveBeenLastCalledWith(0.5, 0.5)
+    expect(onDone).not.toHaveBeenCalled()
+
+    time = 1000
+    timers[0].callback()
+    expect(onUpdate).toHaveBeenLastCalledWith(1, 1)
+    expect(onDone).toHaveBeenCalledTimes(1)
+
+    timers[0].callback()
+    expect(onDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('lets the watchdog skip while frames are flowing', () => {
+    let time = 0
+    const timers = []
+    const onUpdate = vi.fn()
+
+    runFade({
+      from: 0,
+      to: 1,
+      durationMs: 1000,
+      now: () => time,
+      requestFrame: () => 1,
+      cancelFrame: () => {},
+      onUpdate,
+      onDone: () => {},
+      watchdogMs: 250,
+      setIntervalFn: (callback) => {
+        timers.push({ callback })
+        return timers.length
+      },
+    })
+
+    // Simulate a healthy frame chain ticking well inside the watchdog window.
+    time = 100
+    onUpdate.mockClear()
+    timers[0].callback()
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
 })

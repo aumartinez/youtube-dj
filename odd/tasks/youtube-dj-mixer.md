@@ -47,6 +47,10 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 - **S18** First-run affordance: with an empty queue an empty deck shows "No tracks yet" and a
   button that scrolls to and focuses the add field; once the queue has tracks the same button
   becomes "Cue next track" and loads the first queued item without playing it.
+- **S21** Crossfades must survive a hidden tab. Browsers stop `requestAnimationFrame` for hidden
+  pages, so `runFade` also accepts a time-based watchdog: if no frame arrives within the window,
+  progress is computed from elapsed time and the fade still lands on schedule. Background timer
+  throttling can delay the cue check by ~1s (longer after several minutes hidden) — documented.
 - **S20** A fade must never leave a surviving deck muted. If the outgoing track ends mid-fade, the
   fader lands on the destination; if the destination dies mid-fade, it returns to the source. A deck
   that starts playing while the other deck is idle and its own volume is 0 is made audible, and if
@@ -78,6 +82,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T12 | S18       | inline | done   | empty-deck CTA + `cueNextTrack`; 98 tests |
 | T13 | S19       | inline | done   | `isMixUrl` detection + explicit warning/rejection; 101 tests |
 | T14 | S20       | inline | done   | fade-landing + dead-air + zero-volume guards; 104 tests |
+| T15 | S21       | inline | done   | rAF-independent fade watchdog; 107 tests |
 
 ## Log
 
@@ -259,3 +264,21 @@ Fix (three guards in stores/mixer.js):
 
 Evidence: RED first (2 failures: crossfader stayed 0, deck volume 0), then 104/104 green with three
 new tests: source ends mid-fade, destination dies mid-fade, only playing deck at zero volume.
+
+**L12 (user report, verbatim, 2026-11-08)**
+
+"if the page loose focus, the next track is not being played?"
+
+Root cause: `requestAnimationFrame` is suspended for hidden tabs, so a fade that started (or was
+running) when the tab lost focus froze with the destination at volume 0 — the same mute symptom as
+L11, caused by the scheduling layer instead of the state machine.
+
+Fix: `runFade` now takes an optional watchdog (`watchdogMs` + injected interval) that steps the fade
+using elapsed time whenever no frame has arrived within the window. The store enables it at 250ms;
+frames still drive the fade when visible, and the watchdog never schedules extra frame chains.
+`onDone` is guarded so it fires exactly once. Cancel clears both the frame and the interval.
+
+Evidence: RED via a store test where rAF never calls back (test timed out under Vitest's default 5s
+timeout until a per-test 15s timeout was set), then 107/107 green. Two new unit tests cover the
+watchdog finishing a fade and skipping when frames flow. Background timer throttling still applies
+to the cue check (~1s hidden, longer after several minutes), which is documented rather than hidden.
