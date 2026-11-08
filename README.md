@@ -18,7 +18,13 @@ queue lives in `localStorage`.
 - **Smart auto crossfade**: direction follows the live deck (A → B or B → A),
   selectable 4 / 8 / 12 / 16 s, starts the destination deck first, then
   animates the crossfader with `requestAnimationFrame`, which interpolates both
-  `setVolume()` values linearly over the chosen duration.
+  `setVolume()` values linearly over the chosen duration. The mixer shows the
+  direction as an arrow between the A and B badges.
+- **Load or replace a specific track**: every playlist row has `A` / `B` buttons.
+  Loading onto a busy deck swaps its track (the replaced one goes back to the
+  queue) and preserves the transport — a playing deck keeps playing the
+  replacement, a paused deck just cues it. A track playing on the other deck
+  cannot be stolen; a cued track can move between decks.
 - **Timed auto fade (auto-DJ)**: a separate opt-in toggle. When enabled, the app
   watches the player clock and fires the same crossfade automatically at the cue
   point — either *N seconds before the track ends* or *at an exact timestamp*
@@ -72,15 +78,18 @@ npm test
    add a second link.
 2. Press **Play** on Deck A: it takes the first queued track.
 3. Press **Auto crossfade A → B**: it assigns the second track to Deck B,
-   starts it, and fades 4–16 s (your choice) from A to B.
-4. Or flip **Timed auto fade** on, pick *Before end* `10` s (or *At track time*
+   starts it, and fades 4–16 s (your choice) from A to B. The mixer's arrow
+   shows the direction it will take.
+4. Use a row's **A** / **B** button to load or replace that deck's track — with
+   a track playing, the swap keeps the deck playing; otherwise it stays cued.
+5. Or flip **Timed auto fade** on, pick *Before end* `10` s (or *At track time*
    `90` s), and let it run: when Deck A reaches the cue it brings Deck B in by
    itself, then keeps chaining as each track ends.
-5. Press **Stop** on a deck: playback resets, the queue does not move.
-6. Let a track end naturally: the next queued item is cued into that deck in a
+6. Press **Stop** on a deck: playback resets, the queue does not move.
+7. Let a track end naturally: the next queued item is cued into that deck in a
    paused state; the other deck is untouched.
-7. Drag playlist rows by the handle: assigned tracks keep their deck.
-8. Reload: the queue and settings return, everything is silent until you press
+8. Drag playlist rows by the handle: assigned tracks keep their deck.
+9. Reload: the queue and settings return, everything is silent until you press
    Play (browser autoplay policy).
 
 ## Architecture
@@ -130,4 +139,6 @@ No `gh-pages` branch and no committed `dist/`.
   "Unavailable / embedding disabled" message with a Release button.
 - Playback cannot be started without a user gesture. The app never fakes it;
   it shows a banner instead.
+- Icons come from the Font Awesome 7 CDN (`cdn.jsdelivr.net`). If a blocker
+  removes it, every control keeps its text label and still works.
 - Clearing site data or `localStorage` resets the queue.

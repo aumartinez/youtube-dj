@@ -68,6 +68,7 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <button v-if="hasPlayed" type="button" class="btn btn--small btn--ghost" @click="mixer.clearPlayed()">
+        <i class="fa-solid fa-broom" aria-hidden="true"></i>
         Clear played
       </button>
     </header>
@@ -83,7 +84,10 @@ onBeforeUnmount(() => {
         autocomplete="off"
         spellcheck="false"
       />
-      <button type="submit" class="btn btn--accent">Add track</button>
+      <button type="submit" class="btn btn--accent">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        Add track
+      </button>
     </form>
     <p v-if="formError" class="playlist__error" role="alert">{{ formError }}</p>
 
@@ -102,7 +106,8 @@ onBeforeUnmount(() => {
     </ul>
 
     <p class="playlist__hint">
-      Drag the handle to reorder. Loaded and playing tracks keep their deck no matter where they move.
+      Drag the handle to reorder. Use the <b>A</b> / <b>B</b> buttons to load or replace that
+      deck's track — a playing track keeps playing, a cued one stays cued.
     </p>
   </section>
 </template>

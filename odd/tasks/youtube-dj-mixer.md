@@ -36,6 +36,13 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 - **S14** Deploy the production build to GitHub Pages with GitHub Actions (`build_type=workflow`,
   no `gh-pages` branch). The Vite `base` is derived from `GITHUB_REPOSITORY` so the project page
   resolves `/youtube-dj/assets/*`; `VITE_BASE` overrides it. `dist/` and `node_modules/` stay out of git.
+- **S15** Every playlist row exposes `A` / `B` load buttons. Loading assigns that track to the deck
+  and replaces the deck's current item (the replaced item returns to `queued`), preserving the
+  transport: a playing deck keeps playing the replacement, a paused deck only cues it. A track
+  playing on the other deck cannot be stolen; a cued one can move between decks.
+- **S16** The mixer shows the crossfade direction as an explicit arrow between the A and B badges
+  (it flips for B → A and pulses during a fade). Icons come from the Font Awesome 7 CDN and are
+  decorative: every control keeps a text label.
 
 ## Tasks
 
@@ -50,6 +57,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T7  | all       | inline | done   | `npm run build` 23 modules, preview served, headless Edge shows 2 live YT iframes |
 | T8  | S13       | inline | done   | `lib/autofade.js` (+tests), store trigger, mixer-panel UI, 85 tests total |
 | T9  | S14       | inline | done   | Actions run green; live at https://aumartinez.github.io/youtube-dj/ (200, assets 200, 2 iframes) |
+| T10 | S15,S16   | inline | done   | `loadTrackOnDeck`, row A/B buttons, `.direction` arrow, FA 7.3.1 icons; 89 tests |
 
 ## Log
 
@@ -126,3 +134,24 @@ mounted app with 2 YouTube iframes and "YouTube API ready".
 
 Housekeeping: an unrelated harness-generated `.atl/` skill-registry folder was accidentally staged in
 the CI commit; removed from the index in a follow-up commit and added to `.gitignore`.
+
+**L7 (user request, verbatim, 2026-11-07)**
+
+"the player has a few flaws? I am not able to replace the current track? auto crossfade should have an
+arrow to show the direction of the crossfade thing, and if you need to add icons, you could use the
+fontawesome cdn bro/"
+
+Decisions:
+- Added `loadTrackOnDeck(itemId, deckId)` plus per-row `A` / `B` buttons. Replacement returns the old
+  item to `queued`; the deck keeps its transport (playing stays playing, paused stays cued). A track
+  playing on the other deck is locked (disabled button + toast); a cued track can move.
+- Added `.direction`: A badge, arrow icon (flips right for A→B, left for B→A), B badge, and a
+  "Next crossfade / Crossfading" caption; it pulses and shows percent during a fade. Also added
+  endpoint arrows to the crossfader labels.
+- Icons from Font Awesome 7.3.1 via jsDelivr CSS in `index.html` (verified 200 and every used class
+  exists). Text labels remain on every button, so a blocked CDN degrades gracefully.
+
+Evidence: 89 tests (4 new: replace-while-playing, move-cued-to-other-deck, no-steal-while-playing,
+direction arrow flips); `npm run build` clean; headless Edge with CDP added 3 tracks, cued one on
+Deck A via the row button, and reported 3 rows / 6 load buttons / 1 active / 1 disabled / state
+`loaded` / no error, with the arrow and icons rendered in a screenshot.

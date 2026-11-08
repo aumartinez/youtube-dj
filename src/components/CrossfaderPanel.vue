@@ -9,13 +9,18 @@ const mixer = useMixer()
 const state = mixer.state
 
 const otherSide = computed(() => (state.activeDeck === 'A' ? 'B' : 'A'))
+const sourceSide = computed(() => (state.fade.active ? state.fade.source : state.activeDeck))
+const targetSide = computed(() => (state.fade.active ? state.fade.target : otherSide.value))
+const directionIcon = computed(() =>
+  sourceSide.value === 'A' ? 'fa-arrow-right-long' : 'fa-arrow-left-long',
+)
 const fadePercent = computed(() => Math.round(state.fade.progress * 100))
 
 const buttonLabel = computed(() => {
   if (state.fade.active) {
     return `Cancel fade · ${state.fade.source} → ${state.fade.target} ${fadePercent.value}%`
   }
-  return `Auto crossfade ${state.activeDeck} → ${otherSide.value}`
+  return `Auto crossfade ${sourceSide.value} → ${targetSide.value}`
 })
 
 /* ---------- timed auto fade ---------- */
@@ -110,6 +115,11 @@ function onFaderInput(event) {
       :class="state.fade.active ? 'btn--danger' : 'btn--accent'"
       @click="mixer.autoCrossfade()"
     >
+      <i
+        class="fa-solid"
+        :class="state.fade.active ? 'fa-xmark' : 'fa-arrows-left-right'"
+        aria-hidden="true"
+      ></i>
       {{ buttonLabel }}
     </button>
 
@@ -124,9 +134,27 @@ function onFaderInput(event) {
       <span :style="{ width: `${fadePercent}%` }"></span>
     </div>
 
+    <div class="direction" :class="{ 'direction--fading': state.fade.active }">
+      <div class="direction__row">
+        <span class="direction__deck direction__deck--a">A</span>
+        <span class="direction__arrow">
+          <i class="fa-solid" :class="directionIcon" aria-hidden="true"></i>
+          <em v-if="state.fade.active">{{ fadePercent }}%</em>
+        </span>
+        <span class="direction__deck direction__deck--b">B</span>
+      </div>
+      <p class="mixer-panel__direction">
+        {{ state.fade.active ? 'Crossfading' : 'Next crossfade' }}
+        <b>{{ sourceSide }} → {{ targetSide }}</b>
+      </p>
+    </div>
+
     <div class="mixer-panel__group auto-fade">
       <div class="auto-fade__head">
-        <span class="mixer-panel__label">Timed auto fade</span>
+        <span class="mixer-panel__label">
+          <i class="fa-solid fa-clock" aria-hidden="true"></i>
+          Timed auto fade
+        </span>
         <button
           type="button"
           class="switch"
@@ -182,16 +210,15 @@ function onFaderInput(event) {
         @input="onFaderInput"
       />
       <div class="xfader__labels">
-        <span :class="{ 'is-loud': state.crossfader < 0.5 }">A {{ state.decks.A.volume }}%</span>
-        <span :class="{ 'is-loud': state.crossfader >= 0.5 }">B {{ state.decks.B.volume }}%</span>
+        <span :class="{ 'is-loud': state.crossfader < 0.5 }">
+          <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
+          A {{ state.decks.A.volume }}%
+        </span>
+        <span :class="{ 'is-loud': state.crossfader >= 0.5 }">
+          B {{ state.decks.B.volume }}%
+          <i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>
+        </span>
       </div>
-    </div>
-
-    <div class="mixer-panel__group">
-      <span class="mixer-panel__label">Direction</span>
-      <p class="mixer-panel__direction">
-        Live deck <b>{{ state.activeDeck }}</b> → next <b>{{ otherSide }}</b>
-      </p>
     </div>
 
     <p class="mixer-panel__foot">

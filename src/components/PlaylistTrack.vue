@@ -9,8 +9,24 @@ const props = defineProps({
 })
 
 const mixer = useMixer()
+const deckIds = ['A', 'B']
+
 const cover = computed(() => thumbnailUrl(props.item.videoId))
 const paddedIndex = computed(() => String(props.index + 1).padStart(2, '0'))
+
+function isLoadDisabled(deckId) {
+  if (props.item.deck === deckId) return true
+  if (props.item.deck && mixer.state.decks[props.item.deck].playing) return true
+  return false
+}
+
+function loadTitle(deckId) {
+  if (props.item.deck === deckId) return `Already on Deck ${deckId}`
+  if (props.item.deck && mixer.state.decks[props.item.deck].playing) {
+    return `Deck ${props.item.deck} is playing this track — stop it first`
+  }
+  return `Load on Deck ${deckId}`
+}
 </script>
 
 <template>
@@ -21,7 +37,7 @@ const paddedIndex = computed(() => String(props.index + 1).padStart(2, '0'))
       aria-label="Drag to reorder"
       title="Drag to reorder"
     >
-      <span aria-hidden="true">⋮⋮</span>
+      <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
     </button>
 
     <span class="track__index">{{ paddedIndex }}</span>
@@ -37,13 +53,33 @@ const paddedIndex = computed(() => String(props.index + 1).padStart(2, '0'))
       </p>
     </div>
 
+    <div class="track__decks" role="group" aria-label="Load this track on a deck">
+      <button
+        v-for="deckId in deckIds"
+        :key="deckId"
+        type="button"
+        class="track__load"
+        :class="[
+          `track__load--${deckId.toLowerCase()}`,
+          { 'track__load--on': item.deck === deckId },
+        ]"
+        :disabled="isLoadDisabled(deckId)"
+        :aria-label="`Load ${item.title} on Deck ${deckId}`"
+        :title="loadTitle(deckId)"
+        @click="mixer.loadTrackOnDeck(item.id, deckId)"
+      >
+        {{ deckId }}
+      </button>
+    </div>
+
     <button
       type="button"
       class="track__remove"
       :aria-label="`Remove ${item.title}`"
+      title="Remove from playlist"
       @click="mixer.removeTrack(item.id)"
     >
-      ✕
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
     </button>
   </li>
 </template>

@@ -78,16 +78,22 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="deck__controls">
-      <button type="button" class="btn btn--accent" @click="mixer.playDeck(deckId)">Play</button>
-      <button type="button" class="btn" @click="mixer.pauseDeck(deckId)">Pause</button>
-      <button type="button" class="btn" @click="mixer.stopDeck(deckId)">Stop</button>
+      <button type="button" class="btn btn--accent" @click="mixer.playDeck(deckId)">
+        <i class="fa-solid fa-play" aria-hidden="true"></i> Play
+      </button>
+      <button type="button" class="btn" @click="mixer.pauseDeck(deckId)">
+        <i class="fa-solid fa-pause" aria-hidden="true"></i> Pause
+      </button>
+      <button type="button" class="btn" @click="mixer.stopDeck(deckId)">
+        <i class="fa-solid fa-stop" aria-hidden="true"></i> Stop
+      </button>
       <button
         v-if="item && (item.error || deck.error)"
         type="button"
         class="btn btn--warn"
         @click="mixer.ejectDeck(deckId)"
       >
-        Release
+        <i class="fa-solid fa-eject" aria-hidden="true"></i> Release
       </button>
     </div>
 

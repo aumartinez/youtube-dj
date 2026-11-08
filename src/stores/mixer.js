@@ -495,6 +495,65 @@ function resumeFromGesture() {
   playDeck(deckId)
 }
 
+/**
+ * Loads a specific playlist track onto a deck, replacing whatever is there.
+ * - an unassigned track (queued/played) can go to either deck
+ * - a cued (paused) track can move to the other deck
+ * - a playing track cannot be stolen; replace or stop it on its own deck first
+ * The deck transport is preserved: a playing deck keeps playing the new track.
+ */
+function loadTrackOnDeck(itemId, deckId) {
+  const item = state.items.find((entry) => entry.id === itemId)
+  if (!item) return false
+
+  if (item.deck === deckId) {
+    notify(`"${item.title}" is already on Deck ${deckId}.`, 'info')
+    return false
+  }
+
+  if (item.deck) {
+    const ownerId = item.deck
+    if (state.decks[ownerId].playing) {
+      notify(`Deck ${ownerId} is playing "${item.title}" — stop it there first.`, 'warn')
+      return false
+    }
+
+    releaseItem(state.items, item.id, ITEM_STATES.QUEUED)
+    try {
+      players[ownerId]?.stopVideo?.()
+    } catch {
+      /* noop */
+    }
+    cuedVideoId[ownerId] = null
+    state.decks[ownerId].playing = false
+    state.decks[ownerId].error = ''
+  }
+
+  const deck = state.decks[deckId]
+  const previous = deckItem(state.items, deckId)
+  const wasPlaying = deck.playing
+
+  if (previous) releaseItem(state.items, previous.id, ITEM_STATES.QUEUED)
+  assignItemToDeck(state.items, item.id, deckId)
+
+  cuedVideoId[deckId] = null
+  deck.error = ''
+
+  if (wasPlaying) {
+    startPlayback(deckId, item)
+    watchForAutoplayBlock(deckId)
+    state.activeDeck = deckId
+    notify(`Deck ${deckId} swapped to "${item.title}" while playing.`, 'success')
+  } else {
+    cueDeckItem(deckId, item)
+    deck.currentTime = 0
+    deck.duration = 0
+    notify(`"${item.title}" is cued on Deck ${deckId}.`, 'success')
+  }
+
+  return true
+}
+
 // --- Auto crossfade --------------------------------------------------------
 
 function resolveSourceDeck() {
@@ -984,6 +1043,7 @@ export const mixer = {
   stopDeck,
   ejectDeck,
   resumeFromGesture,
+  loadTrackOnDeck,
   autoCrossfade,
   cancelFade: () => cancelFade(),
   moveCrossfader,

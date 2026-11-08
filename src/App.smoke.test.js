@@ -198,6 +198,62 @@ describe('playlist', () => {
   })
 })
 
+describe('loading a specific track', () => {
+  it('replaces a playing deck track and keeps the deck playing', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+    await click(deck(wrapper, 'A'), 'Play')
+    expect(mixer.state.items[0].state).toBe('playing')
+
+    const secondRow = wrapper.findAll('.track')[1]
+    await secondRow.find('.track__load--a').trigger('click')
+    await flushPromises()
+
+    expect(mixer.state.items[0].state).toBe('queued')
+    expect(mixer.state.items[1].deck).toBe('A')
+    expect(mixer.state.items[1].state).toBe('playing')
+    expect(mixer.state.decks.A.playing).toBe(true)
+    expect(FakePlayer.instances[0].videoId).toBe('bbbbbbbbbbb')
+    expect(wrapper.text()).toContain('swapped')
+  })
+
+  it('moves a cued track to the other deck without starting it', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await click(deck(wrapper, 'A'), 'Play')
+    await click(deck(wrapper, 'A'), 'Stop')
+
+    expect(mixer.state.items[0].deck).toBe('A')
+    expect(mixer.state.items[0].state).toBe('loaded')
+
+    await wrapper.findAll('.track')[0].find('.track__load--b').trigger('click')
+    await flushPromises()
+
+    expect(mixer.state.items[0].deck).toBe('B')
+    expect(mixer.state.items[0].state).toBe('loaded')
+    expect(mixer.state.decks.A.playing).toBe(false)
+    expect(mixer.state.decks.B.playing).toBe(false)
+    expect(FakePlayer.instances[1].videoId).toBe('aaaaaaaaaaa')
+  })
+
+  it('refuses to steal a track that is playing on the other deck', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await click(deck(wrapper, 'A'), 'Play')
+
+    const row = wrapper.findAll('.track')[0]
+    const loadOnB = row.find('.track__load--b')
+    expect(loadOnB.attributes('disabled')).toBeDefined()
+
+    await loadOnB.trigger('click')
+    await flushPromises()
+
+    expect(mixer.state.items[0].deck).toBe('A')
+    expect(mixer.state.decks.B.playing).toBe(false)
+  })
+})
+
 describe('crossfade', () => {
   it('starts the destination deck and assigns both decks from the queue', async () => {
     const wrapper = await mountApp()
@@ -225,6 +281,23 @@ describe('crossfade', () => {
     await click(wrapper, 'Auto crossfade')
     expect(mixer.state.fade.active).toBe(false)
     expect(wrapper.text()).toContain('needs a second track')
+  })
+
+  it('shows the crossfade direction with an arrow that flips', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+
+    await click(deck(wrapper, 'A'), 'Play')
+    const direction = wrapper.find('.direction')
+    expect(direction.exists()).toBe(true)
+    expect(direction.text()).toContain('A → B')
+    expect(direction.find('.fa-arrow-right-long').exists()).toBe(true)
+
+    await click(deck(wrapper, 'B'), 'Play')
+    await flushPromises()
+    expect(wrapper.find('.direction').text()).toContain('B → A')
+    expect(wrapper.find('.direction .fa-arrow-left-long').exists()).toBe(true)
   })
 })
 
