@@ -78,9 +78,11 @@ npm test
 
 ## Try it
 
-1. Paste `https://www.youtube.com/watch?v=dQw4w9WgXcQ` → **Add track**, then
-   add a second link.
-2. Press **Play** on Deck A: it takes the first queued track.
+1. On a fresh page the decks say **Add a track to start** — click it, paste a
+   link, press **Add**. The row appears in the playlist; the deck button becomes
+   **Cue next track**.
+2. Press **Play** on Deck A: it takes the first queued track (or use **Cue next
+   track** to load it without playing).
 3. Paste a `https://www.youtube.com/playlist?list=…` URL and press **Add** to
    import a whole public playlist (duplicates are skipped).
 4. Press **Auto crossfade A → B**: it assigns the second track to Deck B,

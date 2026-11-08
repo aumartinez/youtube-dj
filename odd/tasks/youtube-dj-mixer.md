@@ -44,6 +44,9 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
   (it flips for B → A and pulses during a fade). Icons come from the Font Awesome 7 CDN and are
   decorative: every control keeps a text label. The crossfade button itself reads only
   "Auto crossfade" (or "Cancel fade"): the direction is stated once, in the strip below.
+- **S18** First-run affordance: with an empty queue an empty deck shows "No tracks yet" and a
+  button that scrolls to and focuses the add field; once the queue has tracks the same button
+  becomes "Cue next track" and loads the first queued item without playing it.
 - **S17** Paste a public playlist URL to import every track into the shared queue: a throwaway
   off-screen IFrame player (320×240, ≥200×200 per API requirements) cues the list and
   `getPlaylist()` enumerates it; new tracks are appended, duplicates skipped, titles fetched with
@@ -64,6 +67,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T9  | S14       | inline | done   | Actions run green; live at https://aumartinez.github.io/youtube-dj/ (200, assets 200, 2 iframes) |
 | T10 | S15,S16   | inline | done   | `loadTrackOnDeck`, row A/B buttons, `.direction` arrow, FA 7.3.1 icons; 89 tests |
 | T11 | S16,S17   | inline | done   | concatenated button label, playlist import probe, proxy-safe titles; 96 tests |
+| T12 | S18       | inline | done   | empty-deck CTA + `cueNextTrack`; 98 tests |
 
 ## Log
 
@@ -185,3 +189,21 @@ reactive proxy, so rows kept the fallback title until some other interaction re-
 Evidence: 96 tests. CDP against the built app imported a real public playlist: 14 rows, titles
 "Google I/O '26 Keynote" etc., no `playlist__import` banner left, probe iframe gone (2 iframes =
 the two decks), button text exactly "Auto crossfade".
+
+**L9 (user request, verbatim, 2026-11-07)**
+
+"Load a track, look, there is no track loaded in any deck, how do I "load" the first one?"
+then: "you probably didnt understand me, how do I load a track in the initial state?"
+
+The real gap: on a fresh page the queue is empty, so nothing can be cued, and the deck only said
+"press Play". Decisions:
+- `cueNextTrack(deckId)` loads the first queued item onto an idle deck without playing it.
+- An empty deck now shows "No tracks yet — paste a YouTube link below to start." with an
+  "Add a track to start" button that scrolls to and focuses `.playlist__input`. Once the queue is
+  non-empty the same button reads "Cue next track".
+- Row A/B buttons are always deck-colored (pink/cyan) so they read as "send to that deck".
+
+Evidence: 98 tests, including a first-run test asserting the CTA focuses the add field and a cue
+test asserting the deck stays `loaded`/not playing. CDP on a fresh profile: initial overlay text
+correct, click focused `playlist__input`, after adding one track the button became "Cue next track",
+clicking it on Deck B produced title "YouTube Developers Live…", state `loaded`, not playing.

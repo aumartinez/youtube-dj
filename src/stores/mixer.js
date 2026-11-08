@@ -496,6 +496,33 @@ function resumeFromGesture() {
   playDeck(deckId)
 }
 
+/** Cues the first queued track on an idle deck without starting playback. */
+function cueNextTrack(deckId) {
+  const deck = state.decks[deckId]
+  if (deck.playing) {
+    notify(`Deck ${deckId} is playing. Stop it before cueing another track.`, 'info')
+    return false
+  }
+  if (deckItem(state.items, deckId)) {
+    notify(`Deck ${deckId} already has a track loaded.`, 'info')
+    return false
+  }
+
+  const next = findNextQueued(state.items)
+  if (!next) {
+    notify('Queue is empty — paste a YouTube link to add a track.', 'warn')
+    return false
+  }
+
+  assignItemToDeck(state.items, next.id, deckId)
+  cuedVideoId[deckId] = null
+  cueDeckItem(deckId, next)
+  deck.currentTime = 0
+  deck.duration = 0
+  notify(`"${next.title}" is cued on Deck ${deckId}.`, 'success')
+  return true
+}
+
 /**
  * Loads a specific playlist track onto a deck, replacing whatever is there.
  * - an unassigned track (queued/played) can go to either deck
@@ -1240,6 +1267,7 @@ export const mixer = {
   stopDeck,
   ejectDeck,
   resumeFromGesture,
+  cueNextTrack,
   loadTrackOnDeck,
   autoCrossfade,
   cancelFade: () => cancelFade(),

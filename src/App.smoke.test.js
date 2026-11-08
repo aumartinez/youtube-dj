@@ -267,6 +267,27 @@ describe('playlist import', () => {
 })
 
 describe('loading a specific track', () => {
+  it('points an empty first-run deck at the add field', async () => {
+    const wrapper = await mountApp()
+    expect(deck(wrapper, 'A').text()).toContain('Add a track to start')
+
+    await click(deck(wrapper, 'A'), 'Add a track to start')
+    expect(document.activeElement).toBe(wrapper.find('.playlist__input').element)
+  })
+
+  it('cues the first queued track from an empty deck without playing it', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+
+    await click(deck(wrapper, 'A'), 'Cue next track')
+
+    expect(mixer.state.items[0].deck).toBe('A')
+    expect(mixer.state.items[0].state).toBe('loaded')
+    expect(mixer.state.decks.A.playing).toBe(false)
+    expect(FakePlayer.instances[0].videoId).toBe('aaaaaaaaaaa')
+    expect(deck(wrapper, 'A').text()).not.toContain('Cue next track')
+  })
+
   it('replaces a playing deck track and keeps the deck playing', async () => {
     const wrapper = await mountApp()
     await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')

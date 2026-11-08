@@ -18,6 +18,28 @@ const progress = computed(() => {
   return Math.min(100, Math.max(0, (deck.value.currentTime / deck.value.duration) * 100))
 })
 const stateLabel = computed(() => item.value?.state ?? 'empty')
+const queueEmpty = computed(() => mixer.state.items.length === 0)
+
+/** First-run affordance: with nothing in the queue, send the user to the add field. */
+function primaryDeckAction() {
+  if (!queueEmpty.value) {
+    mixer.cueNextTrack(props.deckId)
+    return
+  }
+
+  const input = typeof document !== 'undefined' ? document.querySelector('.playlist__input') : null
+  if (!input) return
+  try {
+    input.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+  } catch {
+    /* jsdom and old browsers */
+  }
+  try {
+    input.focus({ preventScroll: true })
+  } catch {
+    input.focus()
+  }
+}
 
 onMounted(() => {
   // YouTube replaces its target element with an iframe. Give it a node that Vue
@@ -50,16 +72,27 @@ onBeforeUnmount(() => {
       <!-- YouTube replaces this div with its iframe. -->
       <div ref="frame" class="deck__player"></div>
 
-      <div v-if="!deck.ready || !item || deck.error" class="deck__overlay">
-        <p v-if="deck.error" class="deck__error">{{ deck.error }}</p>
-        <template v-else-if="!deck.ready">
-          <span class="deck__overlay-mark">{{ deckId }}</span>
-          <p>Starting player…</p>
-        </template>
-        <template v-else>
-          <span class="deck__overlay-mark">{{ deckId }}</span>
-          <p>Empty deck — press Play for the next queued track, or use A / B on a playlist row.</p>
-        </template>
+      <div v-if="!deck.ready" class="deck__overlay">
+        <span class="deck__overlay-mark">{{ deckId }}</span>
+        <p>Starting player…</p>
+      </div>
+
+      <div v-else-if="!item" class="deck__overlay">
+        <span class="deck__overlay-mark">{{ deckId }}</span>
+        <p v-if="queueEmpty">No tracks yet — paste a YouTube link below to start.</p>
+        <p v-else>Empty deck — cue the next queued track, or pick one with A / B.</p>
+        <button
+          type="button"
+          class="btn btn--small btn--accent deck__cue"
+          @click="primaryDeckAction"
+        >
+          <i class="fa-solid" :class="queueEmpty ? 'fa-plus' : 'fa-play'" aria-hidden="true"></i>
+          {{ queueEmpty ? 'Add a track to start' : 'Cue next track' }}
+        </button>
+      </div>
+
+      <div v-else-if="deck.error" class="deck__overlay">
+        <p class="deck__error">{{ deck.error }}</p>
       </div>
     </div>
 

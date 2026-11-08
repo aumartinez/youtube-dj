@@ -354,6 +354,11 @@ img {
   opacity: 0.28;
 }
 
+.deck__cue {
+  pointer-events: auto;
+  margin-top: 4px;
+}
+
 .deck__error {
   max-width: 34ch;
   color: var(--danger);
@@ -1163,16 +1168,27 @@ img {
 
 .track__load {
   appearance: none;
-  width: 27px;
-  height: 27px;
+  width: 30px;
+  height: 30px;
   border-radius: 7px;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--muted-2);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 800;
   cursor: pointer;
   transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+/* Always deck-colored so the letters read as "send to this deck". */
+.track__load--a {
+  color: #ff9dc0;
+  border-color: rgba(255, 45, 117, 0.35);
+}
+
+.track__load--b {
+  color: #9beefd;
+  border-color: rgba(45, 225, 255, 0.35);
 }
 
 .track__load:hover:not(:disabled) {

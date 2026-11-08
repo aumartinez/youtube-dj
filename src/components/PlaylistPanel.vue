@@ -112,9 +112,9 @@ onBeforeUnmount(() => {
     </ul>
 
     <p class="playlist__hint">
-      Paste a video URL to add one track, or a public playlist URL to import every track in it.
-      Drag the handle to reorder. Use the <b>A</b> / <b>B</b> buttons to load or replace that
-      deck's track — a playing track keeps playing, a cued one stays cued.
+      Load: press <b>Cue next track</b> on an empty deck, or use the <b>A</b> / <b>B</b> buttons
+      to send a row to that deck. Paste a video URL for one track or a public playlist URL to
+      import all of them. Drag the handle to reorder.
     </p>
   </section>
 </template>
