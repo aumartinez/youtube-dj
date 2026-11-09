@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import Sortable from 'sortablejs'
 import App from './App.vue'
 import { resetMixerForTests, useMixer } from './stores/mixer'
+
+vi.mock('sortablejs', () => ({
+  default: { create: vi.fn(() => ({ destroy: vi.fn() })) },
+}))
 
 const mixer = useMixer()
 
@@ -176,6 +181,33 @@ describe('App shell', () => {
     expect(FakePlayer.instances).toHaveLength(2)
     expect(mixer.state.decks.A.ready).toBe(true)
     expect(mixer.state.decks.B.ready).toBe(true)
+  })
+})
+
+describe('drag and drop', () => {
+  it('initializes the sortable list even when the queue starts empty', async () => {
+    Sortable.create.mockClear()
+    await mountApp()
+
+    expect(Sortable.create).toHaveBeenCalledTimes(1)
+    expect(Sortable.create.mock.calls[0][0].classList.contains('tracks')).toBe(true)
+  })
+
+  it('reorders the playlist through the drag handler', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+    await addTrack(wrapper, 'https://youtu.be/ccccccccccc')
+
+    const ids = mixer.state.items.map((item) => item.id)
+    const list = wrapper.find('.tracks').element
+    const nodes = Array.from(list.children)
+    const options = Sortable.create.mock.calls.at(-1)[1]
+
+    options.onEnd({ oldIndex: 2, newIndex: 0, item: nodes[2], from: list })
+    await flushPromises()
+
+    expect(mixer.state.items.map((item) => item.id)).toEqual([ids[2], ids[0], ids[1]])
   })
 })
 

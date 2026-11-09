@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Sortable from 'sortablejs'
 import PlaylistTrack from './PlaylistTrack.vue'
 import { useMixer } from '../stores/mixer'
@@ -40,10 +40,15 @@ function onDragEnd(event) {
   mixer.moveTrack(oldIndex, newIndex)
 }
 
-onMounted(() => {
-  if (!listElement.value) return
+function setupSortable() {
+  if (sortable) {
+    sortable.destroy()
+    sortable = null
+  }
+  const element = listElement.value
+  if (!element) return
   try {
-    sortable = Sortable.create(listElement.value, {
+    sortable = Sortable.create(element, {
       animation: 160,
       handle: '.track__handle',
       ghostClass: 'track--ghost',
@@ -55,7 +60,11 @@ onMounted(() => {
     // Drag and drop is an enhancement; the list still works without it.
     console.warn('[playlist] SortableJS could not start:', error)
   }
-})
+}
+
+// The list element is created with the first track, so setup cannot run on
+// mount: watch the ref and (re)build the sortable instance when it appears.
+watch(listElement, setupSortable, { flush: 'post' })
 
 onBeforeUnmount(() => {
   sortable?.destroy()
@@ -148,7 +157,7 @@ onBeforeUnmount(() => {
       first track, Deck B the next one.
     </p>
 
-    <ul v-else ref="listElement" class="tracks">
+    <ul ref="listElement" class="tracks">
       <PlaylistTrack
         v-for="(item, index) in mixer.state.items"
         :key="item.id"
