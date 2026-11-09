@@ -3,7 +3,7 @@
 **Status:** shipped and stable (session of 2026-11-07 → 2026-11-08)
 **Live:** https://aumartinez.github.io/youtube-dj/
 **Repo:** https://github.com/aumartinez/youtube-dj (public)
-**Head:** `b9c72c1`
+**Head:** `6cdabe3`
 **Latest daily log:** `.handoffs/handoff-2026-11-08.md`
 **Detailed spec + log:** `odd/tasks/youtube-dj-mixer.md`
 **User-facing docs:** `README.md`
@@ -13,7 +13,8 @@
 A two-deck YouTube DJ mixer SPA: Vue 3 + Vite + JavaScript + SortableJS, no backend, no API keys.
 Two official IFrame players, one shared playlist with drag-and-drop and public-playlist import,
 manual crossfader, auto crossfade (4/8/12/16 s), opt-in timed auto fade, repeat list, and seekable
-deck progress. State persists in `localStorage` and restores cued-only, never autoplaying.
+deck progress. Natural end continues playback when that deck was the only one playing, and only cues
+when the other deck is live. State persists in `localStorage` and restores cued-only, never autoplaying.
 
 ## Run and verify
 
@@ -45,7 +46,8 @@ Deploy: push to `main` → GitHub Actions tests, builds, publishes to Pages.
 114 tests green; production build clean; Actions deploy green; live URL 200 with two real YouTube
 iframes. Verified in a real browser: public playlist import (14 tracks, real titles), per-row deck
 loading, direction arrow, timed auto fade, background fade after a refresh, repeat/requeue with
-played rows, and the seek slider (`role="slider"`, `aria-label="Seek Deck A"`).
+played rows, and the seek slider (`role="slider"`, `aria-label="Seek Deck A"`). The natural-end
+continuation is covered by tests (auto-play when alone, cued when the other deck is live).
 
 ## Known limits
 
@@ -58,6 +60,7 @@ false "still broken" report.
 
 ## Recent commits
 
+- `6cdabe3` feat: continue playback when the only playing deck ends
 - `b9c72c1` feat: make the deck progress bar seekable
 - `c63d36b` feat: repeat list and requeue played controls
 - `6329e36` fix: keep crossfades running when the tab loses focus
