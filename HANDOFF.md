@@ -3,7 +3,7 @@
 **Status:** shipped and stable (session of 2026-11-07 → 2026-11-08)
 **Live:** https://aumartinez.github.io/youtube-dj/
 **Repo:** https://github.com/aumartinez/youtube-dj (public)
-**Head:** `6bad061`
+**Head:** `245b057`
 **Latest daily log:** `.handoffs/handoff-2026-11-08.md`
 **Detailed spec + log:** `odd/tasks/youtube-dj-mixer.md`
 **User-facing docs:** `README.md`
@@ -51,6 +51,8 @@ played rows, and the seek slider (`role="slider"`, `aria-label="Seek Deck A"`). 
 rotation is covered by tests: the next track starts on the other deck, the following one preloads
 into the finished deck, and only cues when the other deck is live. Shuffle selection (random among
 unplayed, never re-picking played) and its persistence are covered by unit and store tests.
+Playlist drag-and-drop initialization is covered by a mocked-Sortable test (create on an empty
+queue plus the `onEnd` reorder handler).
 
 ## Known limits
 
@@ -63,11 +65,11 @@ false "still broken" report.
 
 ## Recent commits
 
+- `245b057` fix: initialize playlist drag-and-drop when the list appears
 - `6bad061` feat: add a shuffle toggle for random unplayed selections
 - `76bd3e5` feat: rotate decks on natural end and preload the next track
 - `6cdabe3` feat: continue playback when the only playing deck ends
 - `b9c72c1` feat: make the deck progress bar seekable
-- `c63d36b` feat: repeat list and requeue played controls
 
 ## Primary blocker
 
