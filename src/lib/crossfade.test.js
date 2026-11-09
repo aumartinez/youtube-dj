@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_FADE_DURATION,
   FADE_DURATIONS,
+  crossfadeSourceDeck,
   crossfaderToSide,
   crossfaderVolumes,
   fadeValueAt,
@@ -79,6 +80,34 @@ describe('side helpers', () => {
     expect(crossfaderToSide(0.49)).toBe('A')
     expect(crossfaderToSide(0.5)).toBe('B')
     expect(crossfaderToSide(0.9)).toBe('B')
+  })
+})
+
+describe('crossfadeSourceDeck', () => {
+  const decks = (playingA, playingB) => ({ A: { playing: playingA }, B: { playing: playingB } })
+
+  it('fades from the audible deck when both play and the fader sits on A', () => {
+    expect(crossfadeSourceDeck({ activeDeck: 'B', crossfader: 0, decks: decks(true, true) })).toBe('A')
+    expect(crossfadeSourceDeck({ activeDeck: 'B', crossfader: 0.25, decks: decks(true, true) })).toBe('A')
+  })
+
+  it('fades from the audible deck when the fader sits on B', () => {
+    expect(crossfadeSourceDeck({ activeDeck: 'A', crossfader: 1, decks: decks(true, true) })).toBe('B')
+    expect(crossfadeSourceDeck({ activeDeck: 'A', crossfader: 0.75, decks: decks(true, true) })).toBe('B')
+  })
+
+  it('keeps the active deck at an even split', () => {
+    expect(crossfadeSourceDeck({ activeDeck: 'A', crossfader: 0.5, decks: decks(true, true) })).toBe('A')
+    expect(crossfadeSourceDeck({ activeDeck: 'B', crossfader: 0.5, decks: decks(true, true) })).toBe('B')
+  })
+
+  it('uses the only playing deck regardless of the fader', () => {
+    expect(crossfadeSourceDeck({ activeDeck: 'A', crossfader: 1, decks: decks(true, false) })).toBe('A')
+    expect(crossfadeSourceDeck({ activeDeck: 'A', crossfader: 0, decks: decks(false, true) })).toBe('B')
+  })
+
+  it('returns null when neither deck plays', () => {
+    expect(crossfadeSourceDeck({ activeDeck: 'A', crossfader: 0, decks: decks(false, false) })).toBeNull()
   })
 })
 

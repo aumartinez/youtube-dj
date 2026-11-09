@@ -421,6 +421,29 @@ describe('crossfade', () => {
     expect(mixer.state.crossfader).toBe(0)
   })
 
+  it('fades from the audible deck when the silent deck is the active one', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+
+    await click(deck(wrapper, 'A'), 'Play')
+    await click(deck(wrapper, 'B'), 'Play')
+    await flushPromises()
+
+    // Deck B is playing but the crossfader still sits on A, so B is silent.
+    expect(mixer.state.decks.B.playing).toBe(true)
+    expect(mixer.state.decks.B.volume).toBe(0)
+    expect(mixer.state.activeDeck).toBe('B')
+
+    await click(wrapper, 'Auto crossfade')
+    await flushPromises()
+
+    expect(mixer.state.fade.source).toBe('A')
+    expect(mixer.state.fade.target).toBe('B')
+    expect(mixer.state.crossfader).toBe(0)
+    expect(FakePlayer.instances[0].volume).toBe(100)
+  })
+
   it('reports a missing second track instead of starting a fake fade', async () => {
     const wrapper = await mountApp()
     await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
@@ -554,7 +577,14 @@ describe('crossfade', () => {
     expect(direction.text()).toContain('A → B')
     expect(direction.find('.fa-arrow-right-long').exists()).toBe(true)
 
+    // Starting the silent deck keeps the direction: the listener still hears A.
     await click(deck(wrapper, 'B'), 'Play')
+    await flushPromises()
+    expect(wrapper.find('.direction').text()).toContain('A → B')
+    expect(wrapper.find('.direction .fa-arrow-right-long').exists()).toBe(true)
+
+    // Moving the fader onto B makes B the audible deck, so the direction flips.
+    mixer.moveCrossfader(1)
     await flushPromises()
     expect(wrapper.find('.direction').text()).toContain('B → A')
     expect(wrapper.find('.direction .fa-arrow-left-long').exists()).toBe(true)

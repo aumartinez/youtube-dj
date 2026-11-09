@@ -8,9 +8,11 @@ import { useMixer } from '../stores/mixer'
 const mixer = useMixer()
 const state = mixer.state
 
-const otherSide = computed(() => (state.activeDeck === 'A' ? 'B' : 'A'))
-const sourceSide = computed(() => (state.fade.active ? state.fade.source : state.activeDeck))
-const targetSide = computed(() => (state.fade.active ? state.fade.target : otherSide.value))
+const nextSourceSide = computed(() => mixer.nextCrossfadeSource())
+const sourceSide = computed(() => (state.fade.active ? state.fade.source : nextSourceSide.value))
+const targetSide = computed(() =>
+  state.fade.active ? state.fade.target : sourceSide.value === 'A' ? 'B' : 'A',
+)
 const directionIcon = computed(() =>
   sourceSide.value === 'A' ? 'fa-arrow-right-long' : 'fa-arrow-left-long',
 )
@@ -22,11 +24,7 @@ const buttonLabel = computed(() => (state.fade.active ? 'Cancel fade' : 'Auto cr
 
 const autoFade = computed(() => state.settings.autoFade)
 
-const liveDeckId = computed(() => {
-  if (state.decks[state.activeDeck].playing) return state.activeDeck
-  const other = state.activeDeck === 'A' ? 'B' : 'A'
-  return state.decks[other].playing ? other : null
-})
+const liveDeckId = computed(() => mixer.livePlayingDeck())
 
 const liveItemId = computed(() => {
   const deckId = liveDeckId.value

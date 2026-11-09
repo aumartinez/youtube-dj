@@ -38,6 +38,26 @@ export function crossfaderToSide(position) {
   return clamp01(position) >= 0.5 ? 'B' : 'A'
 }
 
+/**
+ * The deck a crossfade should fade out of: the one the listener actually
+ * hears. Both decks can be playing at once — for example after pressing Play
+ * on the silent deck — so the louder side of the crossfader wins over the
+ * active deck. Returns null when neither deck plays.
+ */
+export function crossfadeSourceDeck({ activeDeck = 'A', crossfader = 0, decks = {} } = {}) {
+  const playingA = Boolean(decks.A?.playing)
+  const playingB = Boolean(decks.B?.playing)
+
+  if (playingA && playingB) {
+    const volumes = crossfaderVolumes(crossfader)
+    if (volumes.A === volumes.B) return activeDeck === 'B' ? 'B' : 'A'
+    return volumes.A > volumes.B ? 'A' : 'B'
+  }
+  if (playingA) return 'A'
+  if (playingB) return 'B'
+  return null
+}
+
 export function fadeValueAt(startValue, targetValue, progress) {
   const p = clamp01(progress)
   return startValue + (targetValue - startValue) * p

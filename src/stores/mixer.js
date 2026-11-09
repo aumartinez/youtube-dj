@@ -16,6 +16,7 @@ import {
 import {
   DEFAULT_FADE_DURATION,
   clamp01,
+  crossfadeSourceDeck,
   crossfaderToSide,
   crossfaderVolumes,
   normalizeFadeDuration,
@@ -717,23 +718,30 @@ function loadTrackOnDeck(itemId, deckId) {
 
 // --- Auto crossfade --------------------------------------------------------
 
-function resolveSourceDeck() {
+/**
+ * The deck the next crossfade will move away from: the audible playing deck,
+ * or the deck holding a track when nothing plays. Read-only: it never mutates
+ * `activeDeck`, so the crossfader panel can preview the direction.
+ */
+function nextCrossfadeSource() {
   const active = state.activeDeck
   const other = otherDeck(active)
+  const playingSource = crossfadeSourceDeck({
+    activeDeck: active,
+    crossfader: state.crossfader,
+    decks: state.decks,
+  })
 
-  if (state.decks[active].playing) return active
-  if (state.decks[other].playing) {
-    state.activeDeck = other
-    return other
-  }
+  if (playingSource) return playingSource
   if (deckItem(state.items, active)) return active
-  if (deckItem(state.items, other)) {
-    state.activeDeck = other
-    return other
-  }
+  if (deckItem(state.items, other)) return other
+  return crossfaderToSide(state.crossfader)
+}
 
-  state.activeDeck = crossfaderToSide(state.crossfader)
-  return state.activeDeck
+function resolveSourceDeck() {
+  const source = nextCrossfadeSource()
+  state.activeDeck = source
+  return source
 }
 
 function waitUntilPlaying(deckIds, timeoutMs) {
@@ -880,9 +888,11 @@ function setAutoFade(patch = {}) {
 
 /** The playing deck that should be faded out; null when neither deck plays. */
 function livePlayingDeck() {
-  if (state.decks[state.activeDeck].playing) return state.activeDeck
-  const other = otherDeck(state.activeDeck)
-  return state.decks[other].playing ? other : null
+  return crossfadeSourceDeck({
+    activeDeck: state.activeDeck,
+    crossfader: state.crossfader,
+    decks: state.decks,
+  })
 }
 
 /**
@@ -1445,6 +1455,8 @@ export const mixer = {
   cueNextTrack,
   loadTrackOnDeck,
   autoCrossfade,
+  nextCrossfadeSource,
+  livePlayingDeck,
   cancelFade: () => cancelFade(),
   moveCrossfader,
   setFadeDuration,
