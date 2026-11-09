@@ -45,8 +45,9 @@ queue lives in `localStorage`.
 - **Manual crossfader** is the single source of truth for both volumes:
   position `0` = A 100 % / B 0 %, position `1` = A 0 % / B 100 %.
 - **Natural end behavior**: when a video ends, that deck's item becomes
-  `played`, the next `queued` item is **cued (not played)** into the same deck,
-  and the other deck keeps playing untouched.
+  `played` and the next `queued` item loads into the same deck. If the other
+  deck is playing, it stays **cued** so it doesn't step on the mix; if nothing
+  else is playing, it **starts automatically** so the set keeps going.
 - **Item states**: `queued → loaded → playing → played`, with deck ownership
   stored on the item. One item can never be assigned to two decks, and
   reordering cannot interrupt a loaded/playing track.
@@ -101,8 +102,9 @@ npm test
    `90` s), and let it run: when Deck A reaches the cue it brings Deck B in by
    itself, then keeps chaining as each track ends.
 6. Press **Stop** on a deck: playback resets, the queue does not move.
-7. Let a track end naturally: the next queued item is cued into that deck in a
-   paused state; the other deck is untouched.
+7. Let a track end naturally: if nothing else is playing, the next queued item
+   starts on its own; if the other deck is live, it is only cued so the mix is
+   not interrupted.
 8. Drag playlist rows by the handle: assigned tracks keep their deck.
 9. Turn on **Repeat list** when you reach the end: every played track is
    requeued in order and the first is cued again. **Requeue played** does it

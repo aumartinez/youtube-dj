@@ -402,8 +402,19 @@ function handleTrackEnded(deckId) {
   const next = nextQueuedOrRequeued()
   if (next) {
     assignItemToDeck(state.items, next.id, deckId)
-    cueDeckItem(deckId, next)
-    notify(`Deck ${deckId} finished — "${next.title}" is cued, not playing.`, 'info')
+
+    if (otherPlaying) {
+      // The other deck is live: prepare this one without stepping on the mix.
+      cueDeckItem(deckId, next)
+      notify(`Deck ${deckId} finished — "${next.title}" is cued for the mix.`, 'info')
+    } else {
+      // Nothing else is on air: keep the set going instead of leaving silence.
+      cuedVideoId[deckId] = null
+      startPlayback(deckId, next)
+      watchForAutoplayBlock(deckId)
+      state.activeDeck = deckId
+      notify(`Deck ${deckId} finished — playing "${next.title}".`, 'info')
+    }
   } else {
     notify(`Deck ${deckId} finished. The queue is empty.`, 'info')
   }
