@@ -50,9 +50,13 @@ export function deckItem(items, deckId) {
   return items.find((item) => item.deck === deckId && ACTIVE_STATES.has(item.state)) ?? null
 }
 
-/** First upcoming item that is not owned by any deck. */
-export function findNextQueued(items) {
-  return items.find((item) => item.state === ITEM_STATES.QUEUED) ?? null
+/** First upcoming item that is not owned by any deck (optionally random). */
+export function findNextQueued(items, { shuffle = false, random = Math.random } = {}) {
+  const queued = items.filter((item) => item.state === ITEM_STATES.QUEUED)
+  if (!queued.length) return null
+  if (!shuffle) return queued[0]
+  const index = Math.min(queued.length - 1, Math.floor(random() * queued.length))
+  return queued[index]
 }
 
 /**

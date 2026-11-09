@@ -164,6 +164,15 @@ describe('parseStoredState', () => {
     )
   })
 
+  it('persists and defaults the shuffle flag', () => {
+    const saved = serializeState({ items: [], settings: { shuffle: true }, crossfader: 0 })
+    expect(saved.settings.shuffle).toBe(true)
+    expect(parseStoredState(JSON.stringify(saved)).settings.shuffle).toBe(true)
+    expect(parseStoredState(JSON.stringify({ items: [], settings: {} })).settings.shuffle).toBe(
+      false,
+    )
+  })
+
   it('exposes a versioned storage key', () => {
     expect(STORAGE_KEY).toBe('youtube-dj-mixer:v1')
   })

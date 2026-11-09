@@ -15,6 +15,7 @@ const counts = computed(() => mixer.trackCounts.value)
 const hasPlayed = computed(() => counts.value.played > 0)
 const isImporting = computed(() => mixer.state.importing.active)
 const repeatList = computed(() => mixer.state.settings.repeatList)
+const shuffle = computed(() => mixer.state.settings.shuffle)
 
 async function submit() {
   formError.value = ''
@@ -73,6 +74,18 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <div class="playlist__controls">
+        <button
+          type="button"
+          class="switch switch--labeled"
+          :class="{ 'switch--on': shuffle }"
+          role="switch"
+          :aria-checked="shuffle"
+          title="Pick a random track from the unplayed queue as the next one"
+          @click="mixer.setShuffle(!shuffle)"
+        >
+          <span class="switch__dot" aria-hidden="true"></span>
+          Shuffle
+        </button>
         <button
           type="button"
           class="switch switch--labeled"
@@ -147,8 +160,9 @@ onBeforeUnmount(() => {
     <p class="playlist__hint">
       Load: press <b>Cue next track</b> on an empty deck, or use the <b>A</b> / <b>B</b> buttons
       to send a row to that deck. Paste a video URL for one track or a public playlist URL to
-      import all of them. Drag the handle to reorder. <b>Repeat list</b> starts over when the
-      queue runs out; <b>Requeue played</b> puts finished tracks back without waiting.
+      import all of them. Drag the handle to reorder. <b>Shuffle</b> picks a random unplayed track
+      for the next slot; <b>Repeat list</b> starts over when the queue runs out; <b>Requeue played</b>
+      puts finished tracks back without waiting.
     </p>
   </section>
 </template>

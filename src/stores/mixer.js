@@ -95,6 +95,7 @@ const state = reactive({
     fadeDuration: DEFAULT_FADE_DURATION,
     autoFade: { ...DEFAULT_AUTO_FADE },
     repeatList: false,
+    shuffle: false,
   },
   crossfader: 0,
   activeDeck: 'A',
@@ -462,7 +463,8 @@ function handleTrackEnded(deckId) {
  * played history requeued in list order so the list starts over.
  */
 function nextQueuedOrRequeued() {
-  const next = findNextQueued(state.items)
+  const options = { shuffle: state.settings.shuffle }
+  const next = findNextQueued(state.items, options)
   if (next) return next
   if (!state.settings.repeatList) return null
 
@@ -470,7 +472,11 @@ function nextQueuedOrRequeued() {
   if (!count) return null
 
   notify(`Repeat list: ${count} played track${count === 1 ? '' : 's'} requeued.`, 'info')
-  return findNextQueued(state.items)
+  return findNextQueued(state.items, options)
+}
+
+function setShuffle(enabled) {
+  state.settings.shuffle = enabled === true
 }
 
 function setRepeatList(enabled) {
@@ -1255,6 +1261,7 @@ watch(
     state.settings.fadeDuration,
     state.settings.autoFade,
     state.settings.repeatList,
+    state.settings.shuffle,
     state.crossfader,
   ],
   () => schedulePersist(),
@@ -1319,6 +1326,7 @@ async function init() {
     state.settings.fadeDuration = restored.settings.fadeDuration
     state.settings.autoFade = restored.settings.autoFade
     state.settings.repeatList = restored.settings.repeatList === true
+    state.settings.shuffle = restored.settings.shuffle === true
     state.crossfader = restored.crossfader
     state.activeDeck = crossfaderToSide(restored.crossfader)
     state.restored = restored.items.length > 0
@@ -1410,6 +1418,7 @@ export function resetMixerForTests() {
   state.settings.fadeDuration = DEFAULT_FADE_DURATION
   state.settings.autoFade = { ...DEFAULT_AUTO_FADE }
   state.settings.repeatList = false
+  state.settings.shuffle = false
   state.autoFadeRuntime = { firedFor: null, warnedFor: null }
   state.importing = { active: false, phase: '', found: 0, added: 0, skipped: 0 }
   state.crossfader = 0
@@ -1441,6 +1450,7 @@ export const mixer = {
   setFadeDuration,
   setAutoFade,
   setRepeatList,
+  setShuffle,
   requeuePlayed,
   addTrack,
   importPlaylist,

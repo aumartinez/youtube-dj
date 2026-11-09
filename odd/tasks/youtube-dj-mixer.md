@@ -98,6 +98,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T17 | S23       | inline | done   | seekable progress slider (pointer + keyboard); 114 tests |
 | T18 | S7        | inline | done   | auto-continue on natural end when no other deck plays |
 | T19 | S7        | inline | done   | deck rotation + preload on natural end; 115 tests |
+| T20 | S24       | inline | done   | shuffle pick among unplayed tracks; 121 tests |
 
 ## Log
 
@@ -358,3 +359,21 @@ the finished deck only cues (mixer mode, unchanged). Repeat list now alternates 
 
 Evidence: 115/115 green. New tests assert B plays and A preloads the following track, and the
 repeat test asserts the full A↔B rotation with the next track waiting on the idle deck.
+
+**L17 (user request, verbatim, 2026-11-08)**
+
+"last request, it is possible to add a "shuffle" control? that would pick any of the list that has
+not been played yet as "next"?"
+then: "when shuffle is "on" the player will pick a random item from the list? but keep a "memory" of
+the played items? when shuffle is "off" just continue with the listed order?"
+
+Decision: `findNextQueued(items, { shuffle, random })` filters to `queued`, so `played` is the memory
+and `loaded`/`playing` items are never double-booked; shuffle picks a random index, otherwise the
+first. The store passes `settings.shuffle` (persisted, default off) through `nextQueuedOrRequeued`,
+so natural end, Play, Cue next, auto crossfade, timed fade and preload all honor it. Because the
+preload path also uses the helper, the following track is a random remaining unplayed one. Repeat
+requeues only after the queue is exhausted, which resets the pool.
+
+Evidence: RED first (unit + storage + store), then 121/121 green. Tests cover the default order,
+random picks with a stubbed `random`, exclusion of assigned/played items, the storage round-trip,
+and a store test that plays A then picks c (0.99) for B and preloads b into A.

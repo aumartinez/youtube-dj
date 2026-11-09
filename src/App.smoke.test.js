@@ -655,6 +655,36 @@ describe('repeat list', () => {
   })
 })
 
+describe('shuffle', () => {
+  it('picks a random unplayed track for the next slot', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+    await addTrack(wrapper, 'https://youtu.be/ccccccccccc')
+
+    const toggle = wrapper.findAll('button').find((button) => button.text().includes('Shuffle'))
+    expect(toggle).toBeTruthy()
+
+    await click(deck(wrapper, 'A'), 'Play')
+    expect(mixer.state.items[0].deck).toBe('A')
+
+    await toggle.trigger('click')
+    expect(mixer.state.settings.shuffle).toBe(true)
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.99)
+
+    FakePlayer.instances[0].end()
+    await flushPromises()
+
+    // b and c are queued; 0.99 picks c for Deck B, then b preloads into A.
+    expect(mixer.state.items[0].state).toBe('played')
+    expect(mixer.state.items[2].deck).toBe('B')
+    expect(mixer.state.items[2].state).toBe('playing')
+    expect(mixer.state.items[1].deck).toBe('A')
+    expect(mixer.state.items[1].state).toBe('loaded')
+  })
+})
+
 describe('natural end', () => {
   it('hands the next queued item to the other deck when the only playing deck ends', async () => {
     const wrapper = await mountApp()

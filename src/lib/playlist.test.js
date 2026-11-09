@@ -49,6 +49,30 @@ describe('findNextQueued', () => {
   })
 })
 
+describe('shuffle selection', () => {
+  it('returns the first queued item by default', () => {
+    const items = buildList(3)
+    expect(findNextQueued(items)?.id).toBe('item-0')
+  })
+
+  it('picks a random queued item when shuffle is on', () => {
+    const items = buildList(3)
+    expect(findNextQueued(items, { shuffle: true, random: () => 0.99 })?.id).toBe('item-2')
+    expect(findNextQueued(items, { shuffle: true, random: () => 0 })?.id).toBe('item-0')
+  })
+
+  it('never picks an assigned or played item', () => {
+    const items = buildList(3)
+    assignItemToDeck(items, 'item-0', 'A')
+    markPlayed(items, 'item-1')
+    expect(findNextQueued(items, { shuffle: true, random: () => 0.5 })?.id).toBe('item-2')
+  })
+
+  it('returns null when nothing is queued even with shuffle', () => {
+    expect(findNextQueued([], { shuffle: true })).toBeNull()
+  })
+})
+
 describe('deck assignment', () => {
   it('assigns an item to a deck and marks it loaded', () => {
     const items = buildList(2)
