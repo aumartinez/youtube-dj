@@ -11,8 +11,10 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 - **S2** Each deck has Play, Pause and Stop. "Stop resets playback without advancing the playlist."
   Stop also clears the cued video so the next Play restarts from the beginning; the playlist pointer never moves.
 - **S3** One shared playlist: add by YouTube URL, remove items, reorder upcoming videos via drag-and-drop (SortableJS).
-- **S4** One smart Auto Crossfade button. Direction comes from the active deck: A → B or B → A.
-  Selectable durations: 4, 8, 12, 16 seconds.
+- **S4** One smart Auto Crossfade button. Direction comes from the audible deck — the side the
+  crossfader currently plays (the louder volume) — so a deck playing at volume 0 never becomes the
+  source; the active deck only breaks a tie at an even 50/50 split or when neither deck plays.
+  A → B or B → A. Selectable durations: 4, 8, 12, 16 seconds.
 - **S5** Manual crossfader slider controls both player volumes: position 0 = Deck A at 100 / Deck B at 0,
   position 1 = A at 0 / B at 100.
 - **S6** Crossfade starts the destination deck first when necessary, then uses `requestAnimationFrame`
@@ -381,3 +383,21 @@ requeues only after the queue is exhausted, which resets the pool.
 Evidence: RED first (unit + storage + store), then 121/121 green. Tests cover the default order,
 random picks with a stubbed `random`, exclusion of assigned/played items, the storage round-trip,
 and a store test that plays A then picks c (0.99) for B and preloads b into A.
+
+**L18 (user enhancement request, verbatim, 2026-11-09)**
+
+"This can have an enhacemente, noticed I had deck A playing, then clicked on deck B and tried to "auto
+crossfade" but the direction of the cross fade changed from B to A? it should have kept the direction
+since the volume on Deck B was 0"
+
+Decision: the crossfade source now follows the audible deck. `crossfadeSourceDeck()`
+(`src/lib/crossfade.js`) picks the louder crossfader side when both decks play, the only playing
+deck otherwise, and the active deck for the 50/50 tie; `resolveSourceDeck` keeps the old
+item/queue fallbacks for stopped decks. Playing the silent deck no longer flips the direction or
+snaps the fader onto it (the snap made the silent deck jump to full volume before fading). The
+direction strip and the timed-fade cue use the same helper, so "Next crossfade" and the timed cue
+also track what the listener hears. S4 was rewritten to match.
+
+Evidence: RED first (5 unit tests for `crossfadeSourceDeck` + the smoke test resolving
+`source: 'B'`); then 129/129 green and `vite build` clean. The direction-strip test now plays B
+(still A → B) and moves the fader onto B (B → A).
