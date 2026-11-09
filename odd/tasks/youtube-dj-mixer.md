@@ -54,6 +54,10 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 - **S23** The deck progress bar is an accessible seek slider: click or drag to jump, with a live
   scrub preview and commit on release; focus + ← / → moves 5 s. Seeking is clamped to the video
   duration and works while playing or paused (`player.seekTo`).
+- **S24** Shuffle toggle: when on, every next-selection path (natural end, Play, Cue next, auto
+  crossfade, timed fade, preload) picks a random `queued` item instead of the first. `played` items
+  are the memory and are never re-picked; Repeat only requeues them once the queue is exhausted.
+  Off returns to list order. Persisted, default off.
 - **S22** Repeat list: an opt-in toggle. When no `queued` item remains and the toggle is on, every
   `played` item is requeued in list order and the first one is cued (never autoplayed, preserving
   S7). A manual **Requeue played** action does the same on demand. Both feed every "next track"

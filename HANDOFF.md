@@ -3,7 +3,7 @@
 **Status:** shipped and stable (session of 2026-11-07 → 2026-11-08)
 **Live:** https://aumartinez.github.io/youtube-dj/
 **Repo:** https://github.com/aumartinez/youtube-dj (public)
-**Head:** `76bd3e5`
+**Head:** `6bad061`
 **Latest daily log:** `.handoffs/handoff-2026-11-08.md`
 **Detailed spec + log:** `odd/tasks/youtube-dj-mixer.md`
 **User-facing docs:** `README.md`
@@ -12,10 +12,10 @@
 
 A two-deck YouTube DJ mixer SPA: Vue 3 + Vite + JavaScript + SortableJS, no backend, no API keys.
 Two official IFrame players, one shared playlist with drag-and-drop and public-playlist import,
-manual crossfader, auto crossfade (4/8/12/16 s), opt-in timed auto fade, repeat list, and seekable
-deck progress. Natural end rotates decks: the next track starts on the other deck and the following
-one is preloaded into the finished deck; when the other deck is live it only cues. State persists in
-`localStorage` and restores cued-only, never autoplaying.
+manual crossfader, auto crossfade (4/8/12/16 s), opt-in timed auto fade, repeat list, shuffle, and
+seekable deck progress. Natural end rotates decks: the next track starts on the other deck and the
+following one is preloaded into the finished deck; when the other deck is live it only cues. State
+persists in `localStorage` and restores cued-only, never autoplaying.
 
 ## Run and verify
 
@@ -49,7 +49,8 @@ iframes. Verified in a real browser: public playlist import (14 tracks, real tit
 loading, direction arrow, timed auto fade, background fade after a refresh, repeat/requeue with
 played rows, and the seek slider (`role="slider"`, `aria-label="Seek Deck A"`). The natural-end
 rotation is covered by tests: the next track starts on the other deck, the following one preloads
-into the finished deck, and only cues when the other deck is live.
+into the finished deck, and only cues when the other deck is live. Shuffle selection (random among
+unplayed, never re-picking played) and its persistence are covered by unit and store tests.
 
 ## Known limits
 
@@ -62,11 +63,11 @@ false "still broken" report.
 
 ## Recent commits
 
+- `6bad061` feat: add a shuffle toggle for random unplayed selections
 - `76bd3e5` feat: rotate decks on natural end and preload the next track
 - `6cdabe3` feat: continue playback when the only playing deck ends
 - `b9c72c1` feat: make the deck progress bar seekable
 - `c63d36b` feat: repeat list and requeue played controls
-- `6329e36` fix: keep crossfades running when the tab loses focus
 
 ## Primary blocker
 
