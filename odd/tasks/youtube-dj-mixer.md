@@ -17,10 +17,12 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
   position 1 = A at 0 / B at 100.
 - **S6** Crossfade starts the destination deck first when necessary, then uses `requestAnimationFrame`
   and interpolates volumes (A = (1-p)*100, B = p*100) over the selected duration.
-- **S7** When the outgoing video ends naturally, load the next available item into that deck. If the
-  other deck is playing, leave the new item `loaded` (cued) and preserve the live deck. If no other
-  deck is playing, start it immediately so playback continues without dead air.
-  (Changed 2026-11-08 by user request; originally always cued. See L15.)
+- **S7** When the outgoing video ends naturally, retire its item and keep the set rotating. If the
+  other deck is playing, load the next available item into the finished deck and leave it cued.
+  If no other deck is playing, start the next item on the other deck and preload the following one
+  into the finished deck (A → B → A rotation). No item is ever assigned to two decks.
+  (Changed 2026-11-08 by user request: same-deck playback first, then corrected to deck rotation.
+  See L15/L16.)
 - **S8** Track item states `queued`, `loaded`, `playing`, `played`; one item can never be assigned to two
   decks, and a deck can only own one item. Reordering must not interrupt assigned videos.
 - **S9** Persist playlist order, item states/assignments, fade duration and crossfader position in
@@ -95,6 +97,7 @@ Branch: n/a (directory is not a git repository). Test runner: `npx vitest run` (
 | T16 | S22       | inline | done   | repeat toggle + requeue button, `nextQueuedOrRequeued`; 112 tests |
 | T17 | S23       | inline | done   | seekable progress slider (pointer + keyboard); 114 tests |
 | T18 | S7        | inline | done   | auto-continue on natural end when no other deck plays |
+| T19 | S7        | inline | done   | deck rotation + preload on natural end; 115 tests |
 
 ## Log
 
@@ -339,3 +342,19 @@ list and the dead-air guards are unaffected (they run before/after this branch).
 Evidence: RED by updating the natural-end test to expect `playing` (it got `loaded`), then 114/114
 green. The existing "keeps the other deck playing when a track ends" test still asserts the cued
 path when the other deck is live.
+
+**L16 (user correction, verbatim, 2026-11-08)**
+
+"No no no, no good, look, Deck A plays, it stops (reached end), Deck B starts to play, when Deck B
+starts to play and Deck A is fully stopped, next item loads in Deck A, when song on Deck B reaches
+end and stops, Deck A starts to play, Deck A playing and Deck B in end "position", triggers, next
+item from the list loaded to Deck B"
+then: "Your current behavior loads everything to deck A"
+
+L15's same-deck playback was the wrong reading. Natural end now rotates decks:
+`autoAdvanceFrom(deckId)` starts the next item on the other deck (or plays that deck's preloaded
+item), then preloads the following item into the deck that just finished. With the other deck live,
+the finished deck only cues (mixer mode, unchanged). Repeat list now alternates A/B indefinitely.
+
+Evidence: 115/115 green. New tests assert B plays and A preloads the following track, and the
+repeat test asserts the full A↔B rotation with the next track waiting on the idle deck.

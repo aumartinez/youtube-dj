@@ -596,20 +596,26 @@ describe('repeat list', () => {
     expect(mixer.state.settings.repeatList).toBe(false)
   })
 
-  it('requeues played tracks at the end and starts the first one again', async () => {
+  it('keeps rotating decks when repeat is on', async () => {
     const wrapper = await mountApp()
     await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
     await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
     mixer.setRepeatList(true)
 
     await click(deck(wrapper, 'A'), 'Play')
-    await endDeck()
-    await click(deck(wrapper, 'A'), 'Play')
-    await endDeck()
+    await endDeck(0)
 
-    expect(mixer.state.items[0].state).toBe('playing')
+    expect(mixer.state.items[1].deck).toBe('B')
+    expect(mixer.state.items[1].state).toBe('playing')
     expect(mixer.state.items[0].deck).toBe('A')
-    expect(mixer.state.items[1].state).toBe('queued')
+    expect(mixer.state.items[0].state).toBe('loaded')
+
+    await endDeck(1)
+
+    expect(mixer.state.items[0].deck).toBe('A')
+    expect(mixer.state.items[0].state).toBe('playing')
+    expect(mixer.state.items[1].deck).toBe('B')
+    expect(mixer.state.items[1].state).toBe('loaded')
     expect(mixer.state.decks.A.playing).toBe(true)
   })
 
@@ -619,12 +625,14 @@ describe('repeat list', () => {
     await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
 
     await click(deck(wrapper, 'A'), 'Play')
-    await endDeck()
-    await click(deck(wrapper, 'A'), 'Play')
-    await endDeck()
+    await endDeck(0)
+    expect(mixer.state.items[1].deck).toBe('B')
+
+    await endDeck(1)
 
     expect(mixer.state.items.every((item) => item.state === 'played')).toBe(true)
     expect(mixer.deckItem('A')).toBeNull()
+    expect(mixer.deckItem('B')).toBeNull()
   })
 
   it('requeues every played track from the header button', async () => {
@@ -633,9 +641,8 @@ describe('repeat list', () => {
     await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
 
     await click(deck(wrapper, 'A'), 'Play')
-    await endDeck()
-    await click(deck(wrapper, 'A'), 'Play')
-    await endDeck()
+    await endDeck(0)
+    await endDeck(1)
     expect(wrapper.findAll('.track--played')).toHaveLength(2)
 
     const requeue = wrapper.findAll('button').find((button) => button.text().includes('Requeue played'))
@@ -649,22 +656,38 @@ describe('repeat list', () => {
 })
 
 describe('natural end', () => {
-  it('keeps the set going when the only playing deck ends', async () => {
+  it('hands the next queued item to the other deck when the only playing deck ends', async () => {
     const wrapper = await mountApp()
     await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
     await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
 
     await click(deck(wrapper, 'A'), 'Play')
-    const playerA = FakePlayer.instances[0]
-
-    playerA.end()
+    FakePlayer.instances[0].end()
     await flushPromises()
 
     expect(mixer.state.items[0].state).toBe('played')
     expect(mixer.state.items[1].state).toBe('playing')
-    expect(mixer.state.items[1].deck).toBe('A')
-    expect(mixer.state.decks.A.playing).toBe(true)
-    expect(playerA.videoId).toBe('bbbbbbbbbbb')
+    expect(mixer.state.items[1].deck).toBe('B')
+    expect(mixer.state.decks.B.playing).toBe(true)
+    expect(FakePlayer.instances[1].videoId).toBe('bbbbbbbbbbb')
+    expect(mixer.deckItem('A')).toBeNull()
+  })
+
+  it('preloads the following track into the deck that finished', async () => {
+    const wrapper = await mountApp()
+    await addTrack(wrapper, 'https://youtu.be/aaaaaaaaaaa')
+    await addTrack(wrapper, 'https://youtu.be/bbbbbbbbbbb')
+    await addTrack(wrapper, 'https://youtu.be/ccccccccccc')
+
+    await click(deck(wrapper, 'A'), 'Play')
+    FakePlayer.instances[0].end()
+    await flushPromises()
+
+    expect(mixer.state.items[1].deck).toBe('B')
+    expect(mixer.state.items[1].state).toBe('playing')
+    expect(mixer.state.items[2].deck).toBe('A')
+    expect(mixer.state.items[2].state).toBe('loaded')
+    expect(FakePlayer.instances[0].videoId).toBe('ccccccccccc')
   })
 
   it('keeps the other deck playing when a track ends', async () => {

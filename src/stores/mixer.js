@@ -366,8 +366,38 @@ function watchForAutoplayBlock(deckId) {
 // --- Track ending ----------------------------------------------------------
 
 /**
- * Natural end: retire the finished item, cue the next queued one into the SAME
- * deck without playing it, and never touch the other deck.
+ * Auto-DJ handoff without a crossfade: start the next track on the OTHER deck,
+ * then preload the following one into the deck that just finished, so the two
+ * decks rotate A → B → A → B with the next track always ready.
+ */
+function autoAdvanceFrom(deckId) {
+  const other = otherDeck(deckId)
+  const next = deckItem(state.items, other) ?? nextQueuedOrRequeued()
+  if (!next) return false
+
+  if (next.deck !== other) {
+    assignItemToDeck(state.items, next.id, other)
+  }
+
+  startPlayback(other, next)
+  watchForAutoplayBlock(other)
+  state.activeDeck = other
+  notify(`Deck ${other} is playing "${next.title}".`, 'info')
+
+  const following = nextQueuedOrRequeued()
+  if (following) {
+    assignItemToDeck(state.items, following.id, deckId)
+    cuedVideoId[deckId] = null
+    cueDeckItem(deckId, following)
+  }
+
+  return true
+}
+
+/**
+ * Natural end: retire the finished item and keep the set moving.
+ * With the other deck live, only cue the next item (mixer mode). Otherwise hand
+ * the next track to the other deck and preload the following one here.
  */
 function handleTrackEnded(deckId) {
   const deck = state.decks[deckId]
@@ -399,23 +429,16 @@ function handleTrackEnded(deckId) {
   const finished = deckItem(state.items, deckId)
   if (finished) markPlayed(state.items, finished.id)
 
-  const next = nextQueuedOrRequeued()
-  if (next) {
-    assignItemToDeck(state.items, next.id, deckId)
-
-    if (otherPlaying) {
-      // The other deck is live: prepare this one without stepping on the mix.
+  if (otherPlaying) {
+    const next = nextQueuedOrRequeued()
+    if (next) {
+      assignItemToDeck(state.items, next.id, deckId)
       cueDeckItem(deckId, next)
       notify(`Deck ${deckId} finished — "${next.title}" is cued for the mix.`, 'info')
     } else {
-      // Nothing else is on air: keep the set going instead of leaving silence.
-      cuedVideoId[deckId] = null
-      startPlayback(deckId, next)
-      watchForAutoplayBlock(deckId)
-      state.activeDeck = deckId
-      notify(`Deck ${deckId} finished — playing "${next.title}".`, 'info')
+      notify(`Deck ${deckId} finished. The queue is empty.`, 'info')
     }
-  } else {
+  } else if (!autoAdvanceFrom(deckId)) {
     notify(`Deck ${deckId} finished. The queue is empty.`, 'info')
   }
 
